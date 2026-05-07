@@ -1,22 +1,51 @@
 import type { Metadata } from "next";
-import { ComingSoon } from "@/components/coming-soon";
+import { redirect } from "next/navigation";
+import { repo } from "@/lib/repositories";
+import { PageHeader } from "@/components/shared/page-header";
+import { AvatarUploader } from "./_components/avatar-uploader";
+import { DatosPersonalesForm } from "./_components/datos-personales-form";
+import { PasswordForm } from "./_components/password-form";
+import { StatsMes } from "./_components/stats-mes";
+import { SesionesCard } from "./_components/sesiones-card";
 
-export const metadata: Metadata = { title: "Perfil" };
+export const metadata: Metadata = { title: "Mi perfil" };
 
-export default function PerfilPage() {
+export default async function PerfilPage() {
+  const me = await repo.users.current();
+  if (!me) redirect("/login");
+
+  const [stats, tasa] = await Promise.all([
+    repo.users.statsPersonales(me.id),
+    repo.tasaCambio.actual(),
+  ]);
+
   return (
-    <ComingSoon
-      title="Tu perfil"
-      description="Información personal, foto de avatar, preferencias y resumen de tus compras del mes."
-      phase="Fase 3"
-      features={[
-        "Foto de avatar (subir desde dispositivo)",
-        "Datos personales: nombre, email, teléfono",
-        "Cambio de contraseña",
-        "Resumen de tus compras del mes",
-        "Tu categoría más comprada",
-        "Sesiones activas y dispositivos",
-      ]}
-    />
+    <div className="container max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
+      <PageHeader
+        eyebrow="Tu cuenta"
+        title="Mi perfil"
+        description={`${me.email} · ${me.cargo ?? "Sin cargo"} · miembro desde ${
+          new Date(me.created_at).toLocaleDateString("es-VE", {
+            year: "numeric",
+            month: "long",
+          })
+        }`}
+      />
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Columna izquierda · Avatar + datos + password */}
+        <div className="lg:col-span-2 space-y-6">
+          <AvatarUploader user={me} />
+          <DatosPersonalesForm user={me} />
+          <PasswordForm />
+        </div>
+
+        {/* Columna derecha · Stats + sesiones */}
+        <div className="space-y-6">
+          <StatsMes stats={stats} tasa={tasa.valor_bs_por_usd} />
+          <SesionesCard ultimoSignin={stats.ultimo_signin} />
+        </div>
+      </div>
+    </div>
   );
 }

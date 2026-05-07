@@ -68,6 +68,7 @@ class MockStore {
         email: u.email,
         rol: u.rol,
         cargo: u.cargo,
+        telefono: null,
         avatar_url: null,
         activo: true,
         created_at: new Date().toISOString(),
@@ -220,6 +221,85 @@ export const mockUsers: UsersRepository = {
   },
   async current() {
     return store.users.get(store.currentUserId) ?? null;
+  },
+
+  async updateSelf(id, input) {
+    const existing = store.users.get(id);
+    if (!existing) throw new Error("Usuario no encontrado");
+    const merged = {
+      ...existing,
+      ...(input.nombre_completo !== undefined && {
+        nombre_completo: input.nombre_completo,
+      }),
+      ...(input.telefono !== undefined && { telefono: input.telefono }),
+      ...(input.avatar_url !== undefined && { avatar_url: input.avatar_url }),
+    };
+    store.users.set(id, merged);
+    return merged;
+  },
+
+  async statsPersonales(userId) {
+    const today = new Date();
+    const ymStart = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+    const all = Array.from(store.gastos.values()).filter(
+      (g) => g.usuario_id === userId
+    );
+    const mes = all.filter((g) => g.fecha.startsWith(ymStart));
+
+    const total_mes = mes.reduce((s, g) => s + g.total_usd, 0);
+    const total_acum = all.reduce((s, g) => s + g.total_usd, 0);
+    const promedio_compra =
+      mes.length > 0 ? total_mes / mes.length : 0;
+
+    // Categoría favorita (por # de compras, fallback total)
+    const catCount = new Map<string, { compras: number; total: number }>();
+    for (const g of all) {
+      const ex = catCount.get(g.categoria_id) ?? { compras: 0, total: 0 };
+      ex.compras += 1;
+      ex.total += g.total_usd;
+      catCount.set(g.categoria_id, ex);
+    }
+    let catFav:
+      | {
+          categoria_id: string;
+          nombre: string;
+          color: string;
+          icono: string;
+          compras: number;
+          total_usd: number;
+        }
+      | undefined;
+    if (catCount.size > 0) {
+      const [favId, favData] = Array.from(catCount.entries()).sort(
+        (a, b) => b[1].compras - a[1].compras || b[1].total - a[1].total
+      )[0];
+      const cat = store.categorias.get(favId);
+      if (cat) {
+        catFav = {
+          categoria_id: favId,
+          nombre: cat.nombre,
+          color: cat.color,
+          icono: cat.icono,
+          compras: favData.compras,
+          total_usd: favData.total,
+        };
+      }
+    }
+
+    const ultimaCompra = all.sort((a, b) =>
+      (b.fecha + b.hora).localeCompare(a.fecha + a.hora)
+    )[0]?.fecha;
+
+    return {
+      total_mes_usd: total_mes,
+      compras_mes: mes.length,
+      promedio_compra_usd: promedio_compra,
+      total_acumulado_usd: total_acum,
+      compras_totales: all.length,
+      categoria_favorita: catFav,
+      ultima_compra_fecha: ultimaCompra,
+      ultimo_signin: new Date().toISOString(),
+    };
   },
 };
 

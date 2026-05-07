@@ -17,6 +17,7 @@ import type {
   NuevoMobiliarioInput,
   PaginatedResult,
   Presupuesto,
+  StatsPersonales,
   TasaCambio,
   User,
 } from "@/types/domain";
@@ -26,6 +27,13 @@ export interface UsersRepository {
   byId(id: string): Promise<User | null>;
   byEmail(email: string): Promise<User | null>;
   current(): Promise<User | null>;
+  /** Update fields del usuario (limitado por RLS / self-update policy) */
+  updateSelf(
+    id: string,
+    input: { nombre_completo?: string; telefono?: string | null; avatar_url?: string | null }
+  ): Promise<User>;
+  /** Stats agregados del usuario (mes actual + acumulado + categoría fav) */
+  statsPersonales(userId: string): Promise<StatsPersonales>;
 }
 
 export interface CategoriasRepository {

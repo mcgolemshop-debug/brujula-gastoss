@@ -129,6 +129,114 @@ const supabaseUsers: UsersRepository = {
     checkErr(error, "users.current");
     return asMaybe<User>(data);
   },
+
+  async updateSelf(id, input) {
+    const sb = await client();
+    const payload: Record<string, unknown> = {};
+    if (input.nombre_completo !== undefined)
+      payload.nombre_completo = input.nombre_completo;
+    if (input.telefono !== undefined) payload.telefono = input.telefono;
+    if (input.avatar_url !== undefined) payload.avatar_url = input.avatar_url;
+    const { data, error } = await sb
+      .from("users")
+      .update(payload)
+      .eq("id", id)
+      .select("*")
+      .single();
+    checkErr(error, "users.updateSelf");
+    return asOne<User>(data);
+  },
+
+  async statsPersonales(userId) {
+    const sb = await client();
+    const today = new Date();
+    const ymStart = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;
+    const nextMes =
+      today.getMonth() === 11
+        ? `${today.getFullYear() + 1}-01-01`
+        : `${today.getFullYear()}-${String(today.getMonth() + 2).padStart(2, "0")}-01`;
+
+    // Gastos del usuario (RLS asegura que solo ve los suyos)
+    const { data: gastosData, error: gErr } = await sb
+      .from("gastos")
+      .select(
+        "categoria_id, total_usd, fecha, categoria:categorias!gastos_categoria_id_fkey(nombre, color, icono)"
+      )
+      .eq("usuario_id", userId);
+    checkErr(gErr, "users.statsPersonales (gastos)");
+
+    type Row = {
+      categoria_id: string;
+      total_usd: number;
+      fecha: string;
+      categoria?: { nombre: string; color: string; icono: string } | null;
+    };
+    const all = asArray<Row>(gastosData);
+    const mes = all.filter(
+      (g) => g.fecha >= ymStart && g.fecha < nextMes
+    );
+
+    const total_mes = mes.reduce((s, g) => s + Number(g.total_usd), 0);
+    const total_acum = all.reduce((s, g) => s + Number(g.total_usd), 0);
+
+    // Categoría favorita
+    const catCount = new Map<
+      string,
+      {
+        compras: number;
+        total: number;
+        nombre: string;
+        color: string;
+        icono: string;
+      }
+    >();
+    for (const g of all) {
+      const ex = catCount.get(g.categoria_id) ?? {
+        compras: 0,
+        total: 0,
+        nombre: g.categoria?.nombre ?? "Sin categoría",
+        color: g.categoria?.color ?? "#6B7280",
+        icono: g.categoria?.icono ?? "Tag",
+      };
+      ex.compras += 1;
+      ex.total += Number(g.total_usd);
+      catCount.set(g.categoria_id, ex);
+    }
+    const catFavArr = Array.from(catCount.entries()).sort(
+      (a, b) =>
+        b[1].compras - a[1].compras || b[1].total - a[1].total
+    );
+    const catFav = catFavArr[0]
+      ? {
+          categoria_id: catFavArr[0][0],
+          nombre: catFavArr[0][1].nombre,
+          color: catFavArr[0][1].color,
+          icono: catFavArr[0][1].icono,
+          compras: catFavArr[0][1].compras,
+          total_usd: catFavArr[0][1].total,
+        }
+      : undefined;
+
+    const ultimaCompra = all
+      .map((g) => g.fecha)
+      .sort((a, b) => b.localeCompare(a))[0];
+
+    // Last sign-in del auth user
+    const {
+      data: { user: authUser },
+    } = await sb.auth.getUser();
+
+    return {
+      total_mes_usd: total_mes,
+      compras_mes: mes.length,
+      promedio_compra_usd: mes.length > 0 ? total_mes / mes.length : 0,
+      total_acumulado_usd: total_acum,
+      compras_totales: all.length,
+      categoria_favorita: catFav,
+      ultima_compra_fecha: ultimaCompra,
+      ultimo_signin: authUser?.last_sign_in_at ?? undefined,
+    };
+  },
 };
 
 // =====================================================================

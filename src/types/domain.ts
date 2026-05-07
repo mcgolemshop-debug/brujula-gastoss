@@ -34,9 +34,28 @@ export interface User {
   email: string;
   rol: Rol;
   cargo: string | null;
+  telefono: string | null;
   avatar_url: string | null;
   activo: boolean;
   created_at: string;
+}
+
+export interface StatsPersonales {
+  total_mes_usd: number;
+  compras_mes: number;
+  promedio_compra_usd: number;
+  total_acumulado_usd: number;
+  compras_totales: number;
+  categoria_favorita?: {
+    categoria_id: string;
+    nombre: string;
+    color: string;
+    icono: string;
+    compras: number;
+    total_usd: number;
+  };
+  ultima_compra_fecha?: string;
+  ultimo_signin?: string;
 }
 
 export interface Categoria {
