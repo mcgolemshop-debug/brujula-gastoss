@@ -1,22 +1,37 @@
 import type { Metadata } from "next";
-import { ComingSoon } from "@/components/coming-soon";
+import { repo } from "@/lib/repositories";
+import { MultiStepForm } from "./_components/multi-step-form";
+import { PageHeader } from "@/components/shared/page-header";
 
 export const metadata: Metadata = { title: "Nuevo gasto" };
 
-export default function NuevoGastoPage() {
+export default async function NuevoGastoPage() {
+  const [categorias, currentUser, tasaActual] = await Promise.all([
+    repo.categorias.list(),
+    repo.users.current(),
+    repo.tasaCambio.actual(),
+  ]);
+
+  if (!currentUser) {
+    return (
+      <div className="container max-w-md mx-auto px-4 py-12 text-center">
+        <p className="text-muted-foreground">No autenticado</p>
+      </div>
+    );
+  }
+
   return (
-    <ComingSoon
-      title="Nuevo gasto"
-      description="Multi-step form que reduce la fricción al registrar cada compra. Captura de cámara directa en móvil, conversión en tiempo real, auto-guardado del borrador."
-      phase="Fase 2"
-      features={[
-        "5 pasos: Categoría → Detalles → Pago → Foto → Confirmar",
-        "Conversión $ → Bs en tiempo real mientras escribes",
-        "Cámara directa en móvil (capture='environment')",
-        "Auto-guardado del borrador en localStorage",
-        "Sugerencias inteligentes según categoría",
-        "Toggle: '¿Es un dispositivo o mueble?' → mobiliario",
-      ]}
-    />
+    <div className="container max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8">
+      <PageHeader
+        eyebrow="Nuevo registro"
+        title="Registrar gasto"
+        description="Cinco pasos rápidos. La tasa actual del momento queda guardada con el gasto."
+      />
+      <MultiStepForm
+        categorias={categorias}
+        currentUser={currentUser}
+        tasaActual={tasaActual.valor_bs_por_usd}
+      />
+    </div>
   );
 }

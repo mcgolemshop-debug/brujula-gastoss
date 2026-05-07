@@ -1,0 +1,204 @@
+"use client";
+
+import * as React from "react";
+import { useFormContext } from "react-hook-form";
+import { Calculator } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+  FormDescription,
+} from "@/components/ui/form";
+import { UNIDADES } from "@/lib/constants";
+import { formatBs, formatUSD } from "@/lib/utils";
+import type { GastoFormInput } from "@/lib/validations/gasto";
+
+export function StepDetalles({ tasa }: { tasa: number }) {
+  const form = useFormContext<GastoFormInput>();
+  const items = form.watch("items") || 0;
+  const precio = form.watch("precio_unitario_usd") || 0;
+  const total = items * precio;
+  const totalBs = total * tasa;
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="font-serif text-2xl font-medium tracking-tight">
+          ¿Qué compraste exactamente?
+        </h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Los detalles importan: cantidad, unidad y precio.
+        </p>
+      </div>
+
+      <FormField
+        name="descripcion"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Descripción</FormLabel>
+            <FormControl>
+              <Input
+                placeholder="Ej: Carne de solomo, mouse Logitech, aceite 20W50..."
+                autoFocus
+                {...field}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <div className="grid grid-cols-3 gap-3">
+        <FormField
+          name="cantidad"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Cantidad</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  inputMode="decimal"
+                  {...field}
+                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                  value={field.value ?? 0}
+                />
+              </FormControl>
+              <FormDescription>1.5, 500, 2.0...</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          name="unidad"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Unidad</FormLabel>
+              <Select
+                value={field.value}
+                onValueChange={(v) => field.onChange(v)}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {UNIDADES.map((u) => (
+                    <SelectItem key={u} value={u}>
+                      {u}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          name="items"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Ítems</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  min="1"
+                  step="1"
+                  inputMode="numeric"
+                  {...field}
+                  onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 1)}
+                  value={field.value ?? 1}
+                />
+              </FormControl>
+              <FormDescription>Cuántos compré</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+
+      <FormField
+        name="precio_unitario_usd"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Precio unitario (USD)</FormLabel>
+            <FormControl>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground font-mono">
+                  $
+                </span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  inputMode="decimal"
+                  className="pl-8 h-12 font-mono text-lg"
+                  {...field}
+                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                  value={field.value ?? 0}
+                />
+              </div>
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        name="observaciones"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel className="flex items-center gap-2">
+              Observaciones
+              <span className="font-normal text-muted-foreground text-[10px]">opcional</span>
+            </FormLabel>
+            <FormControl>
+              <Textarea
+                placeholder="Para qué fue, contexto adicional..."
+                rows={2}
+                {...field}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      {/* Calculadora live */}
+      {total > 0 && (
+        <div className="rounded-xl bg-secondary/50 border border-border p-4 space-y-1">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium uppercase tracking-widest">
+            <Calculator className="h-3.5 w-3.5" />
+            Total a pagar
+          </div>
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="font-mono text-3xl font-semibold tabular-nums">
+              {formatUSD(total)}
+            </span>
+            <span className="font-mono text-sm text-muted-foreground tabular-nums">
+              {formatBs(totalBs)}
+            </span>
+          </div>
+          <p className="text-[10px] text-muted-foreground font-mono">
+            {items} × {formatUSD(precio)} · tasa Bs {tasa.toFixed(2)} / 1 USD
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
