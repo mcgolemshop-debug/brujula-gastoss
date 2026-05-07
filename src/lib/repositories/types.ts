@@ -36,9 +36,24 @@ export interface UsersRepository {
   statsPersonales(userId: string): Promise<StatsPersonales>;
 }
 
+export interface CategoriaInput {
+  nombre: string;
+  icono: string;
+  color: string;
+  tipo: "variable" | "fijo" | "activo_fijo";
+  notas?: string | null;
+  presupuesto_mensual_usd?: number | null;
+}
+
 export interface CategoriasRepository {
-  list(): Promise<Categoria[]>;
+  list(includeInactive?: boolean): Promise<Categoria[]>;
   byId(id: string): Promise<Categoria | null>;
+  create(input: CategoriaInput): Promise<Categoria>;
+  update(id: string, input: Partial<CategoriaInput>): Promise<Categoria>;
+  toggleActiva(id: string, activa: boolean): Promise<Categoria>;
+  delete(id: string): Promise<void>;
+  /** Número de gastos asociados a una categoría (para validar antes de eliminar) */
+  gastosCount(categoriaId: string): Promise<number>;
 }
 
 export interface GastosRepository {

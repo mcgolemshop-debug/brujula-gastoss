@@ -12,7 +12,7 @@ export default async function ConfiguracionPage() {
     repo.users.current(),
     repo.tasaCambio.actual(),
     repo.tasaCambio.historico(),
-    repo.categorias.list(),
+    repo.categorias.list(true), // includeInactive: ver todas para gestión admin
   ]);
 
   if (!me) redirect("/login");

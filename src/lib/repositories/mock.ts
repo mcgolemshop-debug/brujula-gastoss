@@ -304,13 +304,56 @@ export const mockUsers: UsersRepository = {
 };
 
 export const mockCategorias: CategoriasRepository = {
-  async list() {
-    return Array.from(store.categorias.values())
-      .filter((c) => c.activa)
-      .sort((a, b) => a.orden - b.orden);
+  async list(includeInactive = false) {
+    const all = Array.from(store.categorias.values());
+    return (includeInactive ? all : all.filter((c) => c.activa)).sort(
+      (a, b) => a.orden - b.orden
+    );
   },
   async byId(id) {
     return store.categorias.get(id) ?? null;
+  },
+  async create(input) {
+    const id = uid("cat");
+    const maxOrden = Math.max(
+      0,
+      ...Array.from(store.categorias.values()).map((c) => c.orden)
+    );
+    const cat: Categoria = {
+      id,
+      nombre: input.nombre,
+      icono: input.icono,
+      color: input.color,
+      tipo: input.tipo,
+      presupuesto_mensual_usd: input.presupuesto_mensual_usd ?? null,
+      notas: input.notas ?? null,
+      activa: true,
+      orden: maxOrden + 1,
+    };
+    store.categorias.set(id, cat);
+    return cat;
+  },
+  async update(id, input) {
+    const existing = store.categorias.get(id);
+    if (!existing) throw new Error("Categoría no encontrada");
+    const merged: Categoria = { ...existing, ...input } as Categoria;
+    store.categorias.set(id, merged);
+    return merged;
+  },
+  async toggleActiva(id, activa) {
+    const existing = store.categorias.get(id);
+    if (!existing) throw new Error("Categoría no encontrada");
+    const merged: Categoria = { ...existing, activa };
+    store.categorias.set(id, merged);
+    return merged;
+  },
+  async delete(id) {
+    store.categorias.delete(id);
+  },
+  async gastosCount(categoriaId) {
+    return Array.from(store.gastos.values()).filter(
+      (g) => g.categoria_id === categoriaId
+    ).length;
   },
 };
 

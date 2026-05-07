@@ -244,13 +244,11 @@ const supabaseUsers: UsersRepository = {
 // =====================================================================
 
 const supabaseCategorias: CategoriasRepository = {
-  async list() {
+  async list(includeInactive = false) {
     const sb = await client();
-    const { data, error } = await sb
-      .from("categorias")
-      .select("*")
-      .eq("activa", true)
-      .order("orden");
+    let q = sb.from("categorias").select("*").order("orden");
+    if (!includeInactive) q = q.eq("activa", true);
+    const { data, error } = await q;
     checkErr(error, "categorias.list");
     return asArray<Categoria>(data);
   },
@@ -264,6 +262,74 @@ const supabaseCategorias: CategoriasRepository = {
       .maybeSingle();
     checkErr(error, "categorias.byId");
     return asMaybe<Categoria>(data);
+  },
+
+  async create(input) {
+    const sb = await client();
+    const { data: ordenData } = await sb
+      .from("categorias")
+      .select("orden")
+      .order("orden", { ascending: false })
+      .limit(1);
+    const maxOrden = asArray<{ orden: number }>(ordenData)[0]?.orden ?? 0;
+
+    const payload = {
+      nombre: input.nombre,
+      icono: input.icono,
+      color: input.color,
+      tipo: input.tipo,
+      notas: input.notas ?? null,
+      presupuesto_mensual_usd: input.presupuesto_mensual_usd ?? null,
+      activa: true,
+      orden: maxOrden + 1,
+    };
+    const { data, error } = await sb
+      .from("categorias")
+      .insert(payload)
+      .select("*")
+      .single();
+    checkErr(error, "categorias.create");
+    return asOne<Categoria>(data);
+  },
+
+  async update(id, input) {
+    const sb = await client();
+    const { data, error } = await sb
+      .from("categorias")
+      .update(input)
+      .eq("id", id)
+      .select("*")
+      .single();
+    checkErr(error, "categorias.update");
+    return asOne<Categoria>(data);
+  },
+
+  async toggleActiva(id, activa) {
+    const sb = await client();
+    const { data, error } = await sb
+      .from("categorias")
+      .update({ activa })
+      .eq("id", id)
+      .select("*")
+      .single();
+    checkErr(error, "categorias.toggleActiva");
+    return asOne<Categoria>(data);
+  },
+
+  async delete(id) {
+    const sb = await client();
+    const { error } = await sb.from("categorias").delete().eq("id", id);
+    checkErr(error, "categorias.delete");
+  },
+
+  async gastosCount(categoriaId) {
+    const sb = await client();
+    const { count, error } = await sb
+      .from("gastos")
+      .select("id", { count: "exact", head: true })
+      .eq("categoria_id", categoriaId);
+    checkErr(error, "categorias.gastosCount");
+    return count ?? 0;
   },
 };
 
