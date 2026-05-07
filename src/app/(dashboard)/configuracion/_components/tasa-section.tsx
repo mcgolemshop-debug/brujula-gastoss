@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NumericInput } from "@/components/shared/numeric-input";
 import {
   Select,
   SelectContent,
@@ -112,16 +113,14 @@ export function TasaSection({ actual, historico, isAdmin }: Props) {
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-sm">
                       Bs
                     </span>
-                    <Input
-                      type="number"
+                    <NumericInput
+                      variant="decimal"
                       min="0"
                       step="0.0001"
-                      inputMode="decimal"
+                      placeholder="36.50"
                       className="pl-10 h-11 font-mono"
                       value={valor}
-                      onChange={(e) =>
-                        setValor(parseFloat(e.target.value) || 0)
-                      }
+                      onChange={(v) => setValor(v ?? 0)}
                     />
                   </div>
                 </div>

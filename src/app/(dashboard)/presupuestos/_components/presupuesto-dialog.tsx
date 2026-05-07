@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NumericInput } from "@/components/shared/numeric-input";
 import {
   Select,
   SelectContent,
@@ -142,14 +143,14 @@ export function PresupuestoDialog({
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground font-mono">
                   $
                 </span>
-                <Input
-                  type="number"
-                  min="0"
+                <NumericInput
+                  variant="decimal"
                   step="0.01"
-                  inputMode="decimal"
+                  min="0"
+                  placeholder="0.00"
                   className="pl-8 h-12 font-mono text-lg"
                   value={monto}
-                  onChange={(e) => setMonto(parseFloat(e.target.value) || 0)}
+                  onChange={(v) => setMonto(v ?? 0)}
                   autoFocus
                 />
               </div>

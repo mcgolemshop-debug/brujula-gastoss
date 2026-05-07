@@ -17,6 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/shared/numeric-input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -228,15 +229,15 @@ export function NuevoMobiliarioButton() {
                   <FormItem>
                     <FormLabel>Cantidad</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
+                      <NumericInput
+                        variant="integer"
                         min="1"
-                        step="1"
-                        {...field}
-                        onChange={(e) =>
-                          field.onChange(parseInt(e.target.value, 10) || 1)
-                        }
-                        value={field.value ?? 1}
+                        placeholder="1"
+                        value={field.value}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
                       />
                     </FormControl>
                     <FormMessage />
@@ -253,16 +254,17 @@ export function NuevoMobiliarioButton() {
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground font-mono">
                           $
                         </span>
-                        <Input
-                          type="number"
+                        <NumericInput
+                          variant="decimal"
                           step="0.01"
                           min="0"
+                          placeholder="0.00"
                           className="pl-8 font-mono"
-                          {...field}
-                          onChange={(e) =>
-                            field.onChange(parseFloat(e.target.value) || 0)
-                          }
-                          value={field.value ?? 0}
+                          value={field.value}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
                         />
                       </div>
                     </FormControl>

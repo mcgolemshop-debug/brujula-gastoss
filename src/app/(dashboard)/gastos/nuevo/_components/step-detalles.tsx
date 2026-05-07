@@ -4,6 +4,7 @@ import * as React from "react";
 import { useFormContext } from "react-hook-form";
 import { Calculator } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/shared/numeric-input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -66,14 +67,16 @@ export function StepDetalles({ tasa }: { tasa: number }) {
             <FormItem>
               <FormLabel>Cantidad</FormLabel>
               <FormControl>
-                <Input
-                  type="number"
+                <NumericInput
+                  variant="decimal"
                   step="0.001"
                   min="0"
-                  inputMode="decimal"
-                  {...field}
-                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                  value={field.value ?? 0}
+                  placeholder="1.5"
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  ref={field.ref}
                 />
               </FormControl>
               <FormDescription>1.5, 500, 2.0...</FormDescription>
@@ -115,14 +118,15 @@ export function StepDetalles({ tasa }: { tasa: number }) {
             <FormItem>
               <FormLabel>Ítems</FormLabel>
               <FormControl>
-                <Input
-                  type="number"
+                <NumericInput
+                  variant="integer"
                   min="1"
-                  step="1"
-                  inputMode="numeric"
-                  {...field}
-                  onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 1)}
-                  value={field.value ?? 1}
+                  placeholder="1"
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  ref={field.ref}
                 />
               </FormControl>
               <FormDescription>Cuántos compré</FormDescription>
@@ -142,15 +146,17 @@ export function StepDetalles({ tasa }: { tasa: number }) {
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground font-mono">
                   $
                 </span>
-                <Input
-                  type="number"
+                <NumericInput
+                  variant="decimal"
                   step="0.01"
                   min="0"
-                  inputMode="decimal"
+                  placeholder="0.00"
                   className="pl-8 h-12 font-mono text-lg"
-                  {...field}
-                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                  value={field.value ?? 0}
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  ref={field.ref}
                 />
               </div>
             </FormControl>
