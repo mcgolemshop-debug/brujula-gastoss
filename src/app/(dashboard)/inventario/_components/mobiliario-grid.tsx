@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Armchair,
@@ -10,7 +11,9 @@ import {
   Cpu,
   Laptop,
   MapPin,
+  MoreVertical,
   Plug,
+  Trash2,
   User as UserIcon,
 } from "lucide-react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -25,10 +28,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { ESTADOS_MOBILIARIO } from "@/lib/constants";
 import { cn, formatUSD } from "@/lib/utils";
 import type { EstadoMobiliario, Mobiliario } from "@/types/domain";
-import { cambiarEstadoMobiliarioAction } from "../_actions";
+import {
+  cambiarEstadoMobiliarioAction,
+  eliminarMobiliarioAction,
+} from "../_actions";
 import { toast } from "sonner";
 
 interface Props {
@@ -46,12 +53,31 @@ const TIPO_ICON: Record<Mobiliario["tipo"], React.ComponentType<{ className?: st
 };
 
 export function MobiliarioGrid({ items, isAdmin, tasaActual }: Props) {
+  const router = useRouter();
   const [filterEstado, setFilterEstado] = React.useState<EstadoMobiliario | "all">("all");
+  const [toDelete, setToDelete] = React.useState<Mobiliario | null>(null);
+  const [deleting, setDeleting] = React.useState(false);
 
   const filtered =
     filterEstado === "all"
       ? items
       : items.filter((m) => m.estado === filterEstado);
+
+  async function handleDelete() {
+    if (!toDelete) return;
+    setDeleting(true);
+    const result = await eliminarMobiliarioAction(toDelete.id);
+    setDeleting(false);
+    if (result.ok) {
+      toast.success(`${toDelete.codigo} eliminado`, {
+        description: toDelete.descripcion,
+      });
+      setToDelete(null);
+      router.refresh();
+    } else {
+      toast.error("No se pudo eliminar", { description: result.error });
+    }
+  }
 
   if (items.length === 0) {
     return (
@@ -105,9 +131,27 @@ export function MobiliarioGrid({ items, isAdmin, tasaActual }: Props) {
             isAdmin={isAdmin}
             tasa={tasaActual}
             delay={Math.min(i * 0.04, 0.5)}
+            onDelete={() => setToDelete(m)}
           />
         ))}
       </div>
+
+      {/* Confirm delete dialog */}
+      <ConfirmDialog
+        open={toDelete !== null}
+        onOpenChange={(o) => !o && !deleting && setToDelete(null)}
+        title={`¿Eliminar ${toDelete?.codigo}?`}
+        description={
+          toDelete
+            ? `Vas a eliminar permanentemente "${toDelete.descripcion}" del inventario. Los gastos vinculados a este ítem permanecen pero pierden la referencia. Esta acción no se puede deshacer — considera cambiar el estado a "Dado de baja" si solo quieres archivarlo.`
+            : ""
+        }
+        variant="destructive"
+        confirmLabel="Sí, eliminar permanentemente"
+        cancelLabel="Mejor no"
+        loading={deleting}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }
@@ -144,11 +188,13 @@ function MobiliarioCard({
   isAdmin,
   tasa,
   delay,
+  onDelete,
 }: {
   item: Mobiliario;
   isAdmin: boolean;
   tasa: number;
   delay: number;
+  onDelete: () => void;
 }) {
   const [changing, setChanging] = React.useState<EstadoMobiliario | null>(null);
   const Icon = TIPO_ICON[item.tipo] ?? Armchair;
@@ -178,7 +224,7 @@ function MobiliarioCard({
     >
       <Card
         className={cn(
-          "h-full flex flex-col hover:shadow-elegant hover:border-accent/40 transition-all",
+          "h-full flex flex-col hover:shadow-elegant hover:border-accent/40 transition-all group",
           opacityWhenBaja
         )}
       >
@@ -210,73 +256,101 @@ function MobiliarioCard({
               </div>
             </div>
 
-            {isAdmin ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Badge
-                    variant={
-                      (estadoMeta?.color as
-                        | "success"
-                        | "warning"
-                        | "destructive"
-                        | "muted") ?? "muted"
-                    }
-                    className={cn(
-                      "shrink-0 cursor-pointer hover:opacity-80 gap-1",
-                      item.estado === "necesita_reparacion" && "animate-pulse"
-                    )}
-                  >
-                    {estadoMeta?.label ?? item.estado}
-                    <ChevronDown className="h-3 w-3" />
-                  </Badge>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>Cambiar estado</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {ESTADOS_MOBILIARIO.map((e) => (
-                    <DropdownMenuItem
-                      key={e.value}
-                      onClick={() => handleChangeEstado(e.value)}
-                      disabled={
-                        item.estado === e.value || changing !== null
+            <div className="flex items-center gap-1 shrink-0">
+              {isAdmin ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Badge
+                      variant={
+                        (estadoMeta?.color as
+                          | "success"
+                          | "warning"
+                          | "destructive"
+                          | "muted") ?? "muted"
                       }
+                      className={cn(
+                        "shrink-0 cursor-pointer hover:opacity-80 gap-1",
+                        item.estado === "necesita_reparacion" && "animate-pulse"
+                      )}
                     >
-                      <span
-                        className={cn(
-                          "w-2 h-2 rounded-full",
-                          e.color === "success" && "bg-success",
-                          e.color === "warning" && "bg-warning",
-                          e.color === "destructive" && "bg-destructive",
-                          e.color === "muted" && "bg-muted-foreground"
-                        )}
-                      />
-                      {e.label}
+                      {estadoMeta?.label ?? item.estado}
+                      <ChevronDown className="h-3 w-3" />
+                    </Badge>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>Cambiar estado</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {ESTADOS_MOBILIARIO.map((e) => (
+                      <DropdownMenuItem
+                        key={e.value}
+                        onClick={() => handleChangeEstado(e.value)}
+                        disabled={
+                          item.estado === e.value || changing !== null
+                        }
+                      >
+                        <span
+                          className={cn(
+                            "w-2 h-2 rounded-full",
+                            e.color === "success" && "bg-success",
+                            e.color === "warning" && "bg-warning",
+                            e.color === "destructive" && "bg-destructive",
+                            e.color === "muted" && "bg-muted-foreground"
+                          )}
+                        />
+                        {e.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Badge
+                  variant={
+                    (estadoMeta?.color as
+                      | "success"
+                      | "warning"
+                      | "destructive"
+                      | "muted") ?? "muted"
+                  }
+                  className={cn(
+                    "shrink-0",
+                    item.estado === "necesita_reparacion" && "animate-pulse"
+                  )}
+                >
+                  {estadoMeta?.label ?? item.estado}
+                </Badge>
+              )}
+
+              {isAdmin && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="opacity-60 group-hover:opacity-100 transition-opacity"
+                      aria-label="Más acciones"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={onDelete}
+                      className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Eliminar permanentemente
                     </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Badge
-                variant={
-                  (estadoMeta?.color as
-                    | "success"
-                    | "warning"
-                    | "destructive"
-                    | "muted") ?? "muted"
-                }
-                className={cn(
-                  "shrink-0",
-                  item.estado === "necesita_reparacion" && "animate-pulse"
-                )}
-              >
-                {estadoMeta?.label ?? item.estado}
-              </Badge>
-            )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
           </div>
 
           {item.notas && (
             <p className="text-xs text-muted-foreground italic line-clamp-2">
-              "{item.notas}"
+              &ldquo;{item.notas}&rdquo;
             </p>
           )}
 
