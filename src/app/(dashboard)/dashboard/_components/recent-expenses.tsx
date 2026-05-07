@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Receipt as ReceiptIcon } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -14,12 +14,17 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/shared/empty-state";
+import { CategoryBadge } from "@/components/shared/category-badge";
 import { cn, formatUSD, formatBs, getInitials, colorFromName } from "@/lib/utils";
-import { GASTOS_EJEMPLO } from "@/lib/constants";
+import type { Gasto } from "@/types/domain";
 
-const TASA = 36.5;
+interface Props {
+  gastos: Gasto[];
+  tasa: number;
+}
 
-export function RecentExpenses() {
+export function RecentExpenses({ gastos, tasa }: Props) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -31,7 +36,8 @@ export function RecentExpenses() {
           <div>
             <CardTitle>Gastos recientes</CardTitle>
             <CardDescription>
-              Últimos {GASTOS_EJEMPLO.length} registros del equipo
+              Últimos {gastos.length}{" "}
+              {gastos.length === 1 ? "registro" : "registros"} del equipo
             </CardDescription>
           </div>
           <Button asChild variant="ghost" size="sm" className="gap-1.5">
@@ -42,103 +48,126 @@ export function RecentExpenses() {
           </Button>
         </CardHeader>
         <CardContent className="px-0 md:px-6">
-          {/* Desktop · tabla */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border">
-                  <th className="pb-2.5 pr-3 font-medium">Cód.</th>
-                  <th className="pb-2.5 pr-3 font-medium">Persona</th>
-                  <th className="pb-2.5 pr-3 font-medium">Categoría</th>
-                  <th className="pb-2.5 pr-3 font-medium">Detalle</th>
-                  <th className="pb-2.5 pr-3 font-medium text-right">
-                    Total $
-                  </th>
-                  <th className="pb-2.5 font-medium text-right">Total Bs</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {GASTOS_EJEMPLO.map((g) => {
-                  const total = g.precio_unitario_usd * g.items;
-                  return (
-                    <tr
-                      key={g.codigo}
-                      className="group hover:bg-secondary/40 transition-colors"
-                    >
-                      <td className="py-3 pr-3 font-mono text-xs text-muted-foreground">
-                        {g.codigo}
-                      </td>
-                      <td className="py-3 pr-3">
-                        <PersonCell name={g.usuario} />
-                      </td>
-                      <td className="py-3 pr-3">
-                        <Badge variant="outline" className="font-normal">
-                          {g.categoria}
-                        </Badge>
-                      </td>
-                      <td className="py-3 pr-3 max-w-xs truncate text-foreground">
-                        {g.descripcion}
-                        <span className="text-muted-foreground text-xs ml-1.5">
-                          · {g.cantidad} {g.unidad}
-                        </span>
-                      </td>
-                      <td className="py-3 pr-3 text-right font-mono font-semibold tabular-nums">
-                        {formatUSD(total)}
-                      </td>
-                      <td className="py-3 text-right font-mono text-xs text-muted-foreground tabular-nums">
-                        {formatBs(total * TASA, { compact: true })}
-                      </td>
+          {gastos.length === 0 ? (
+            <EmptyState
+              icon={ReceiptIcon}
+              title="Sin gastos registrados"
+              description="Cuando alguien del equipo registre el primer gasto, aparecerá aquí."
+              action={{ label: "Registrar primer gasto", href: "/gastos/nuevo" }}
+            />
+          ) : (
+            <>
+              {/* Desktop · tabla */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border">
+                      <th className="pb-2.5 pr-3 font-medium">Cód.</th>
+                      <th className="pb-2.5 pr-3 font-medium">Persona</th>
+                      <th className="pb-2.5 pr-3 font-medium">Categoría</th>
+                      <th className="pb-2.5 pr-3 font-medium">Detalle</th>
+                      <th className="pb-2.5 pr-3 font-medium text-right">
+                        Total $
+                      </th>
+                      <th className="pb-2.5 font-medium text-right">Total Bs</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile · tarjetas */}
-          <div className="md:hidden divide-y divide-border">
-            {GASTOS_EJEMPLO.map((g) => {
-              const total = g.precio_unitario_usd * g.items;
-              return (
-                <div
-                  key={g.codigo}
-                  className="py-3 px-4 hover:bg-secondary/40 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <PersonAvatar name={g.usuario} />
-                      <div className="min-w-0 flex-1">
-                        <div className="font-medium text-sm truncate">
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {gastos.map((g) => (
+                      <tr
+                        key={g.id}
+                        className="group hover:bg-secondary/40 transition-colors"
+                      >
+                        <td className="py-3 pr-3 font-mono text-xs text-muted-foreground">
+                          {g.codigo}
+                        </td>
+                        <td className="py-3 pr-3">
+                          <PersonCell
+                            name={g.usuario?.nombre_completo ?? "—"}
+                          />
+                        </td>
+                        <td className="py-3 pr-3">
+                          {g.categoria && (
+                            <CategoryBadge
+                              nombre={g.categoria.nombre}
+                              icono={g.categoria.icono}
+                              color={g.categoria.color}
+                              variant="soft"
+                              size="sm"
+                            />
+                          )}
+                        </td>
+                        <td className="py-3 pr-3 max-w-xs truncate text-foreground">
                           {g.descripcion}
+                          <span className="text-muted-foreground text-xs ml-1.5">
+                            · {g.cantidad} {g.unidad}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-3 text-right font-mono font-semibold tabular-nums">
+                          {formatUSD(g.total_usd)}
+                        </td>
+                        <td className="py-3 text-right font-mono text-xs text-muted-foreground tabular-nums">
+                          {formatBs(g.total_bs, { compact: true })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile · tarjetas */}
+              <div className="md:hidden divide-y divide-border">
+                {gastos.map((g) => (
+                  <div
+                    key={g.id}
+                    className="py-3 px-4 hover:bg-secondary/40 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <PersonAvatar
+                          name={g.usuario?.nombre_completo ?? "—"}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-sm truncate">
+                            {g.descripcion}
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                            <span className="truncate">
+                              {g.usuario?.nombre_completo ?? "—"}
+                            </span>
+                            <span>·</span>
+                            <span className="font-mono">{g.codigo}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                          <span className="truncate">{g.usuario}</span>
-                          <span>·</span>
-                          <span className="font-mono">{g.codigo}</span>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="font-mono font-semibold text-sm">
+                          {formatUSD(g.total_usd)}
+                        </div>
+                        <div className="font-mono text-[10px] text-muted-foreground">
+                          {formatBs(g.total_bs, { compact: true })}
                         </div>
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <div className="font-mono font-semibold text-sm">
-                        {formatUSD(total)}
-                      </div>
-                      <div className="font-mono text-[10px] text-muted-foreground">
-                        {formatBs(total * TASA, { compact: true })}
-                      </div>
+                    <div className="flex items-center gap-2 mt-2 text-[10px]">
+                      {g.categoria && (
+                        <CategoryBadge
+                          nombre={g.categoria.nombre}
+                          icono={g.categoria.icono}
+                          color={g.categoria.color}
+                          variant="soft"
+                          size="sm"
+                        />
+                      )}
+                      <span className="text-muted-foreground font-mono">
+                        {g.cantidad} {g.unidad}
+                      </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-2 text-[10px]">
-                    <Badge variant="outline" className="font-normal">
-                      {g.categoria}
-                    </Badge>
-                    <span className="text-muted-foreground font-mono">
-                      {g.cantidad} {g.unidad}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                ))}
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </motion.div>

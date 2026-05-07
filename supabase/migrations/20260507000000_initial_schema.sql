@@ -119,7 +119,7 @@ create table public.gastos (
 create index idx_gastos_fecha on public.gastos(fecha desc);
 create index idx_gastos_usuario on public.gastos(usuario_id);
 create index idx_gastos_categoria on public.gastos(categoria_id);
-create index idx_gastos_mes on public.gastos(date_trunc('month', fecha));
+-- Para queries de "mes actual" usamos rango sobre fecha (idx_gastos_fecha lo cubre)
 
 -- public.facturas · fotos en storage
 create table public.facturas (
@@ -198,10 +198,13 @@ create trigger set_mobiliario_updated_at before update on public.mobiliario
   for each row execute function public.set_updated_at();
 
 -- Trigger: auto-crear public.users cuando se crea auth.users
+-- IMPORTANTE: `set search_path = public` es necesario en Supabase para que
+-- la función encuentre los enums (rol_usuario) en modo security definer.
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer
+set search_path = public
 as $$
 begin
   insert into public.users (id, email, nombre_completo, rol, cargo)
@@ -209,13 +212,20 @@ begin
     new.id,
     new.email,
     coalesce(new.raw_user_meta_data->>'nombre_completo', split_part(new.email, '@', 1)),
-    coalesce((new.raw_user_meta_data->>'rol')::rol_usuario, 'empleado'),
+    coalesce((new.raw_user_meta_data->>'rol')::public.rol_usuario, 'empleado'),
     new.raw_user_meta_data->>'cargo'
   )
   on conflict (id) do nothing;
   return new;
+exception when others then
+  -- Loguear pero no abortar la creación del auth user
+  raise warning 'handle_new_user error: %', sqlerrm;
+  return new;
 end;
 $$;
+
+-- Permisos para que supabase_auth_admin pueda insertar via el trigger
+grant insert, update, select on public.users to supabase_auth_admin;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created

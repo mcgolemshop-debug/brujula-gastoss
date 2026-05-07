@@ -2,53 +2,73 @@
 
 import * as React from "react";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
-import { TrendingUp, TrendingDown, Receipt, Calendar, Banknote } from "lucide-react";
+import {
+  TrendingUp,
+  TrendingDown,
+  Receipt,
+  Calendar,
+  Banknote,
+} from "lucide-react";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn, formatUSD, formatBs } from "@/lib/utils";
+import type { KpiResumen } from "@/types/domain";
 
-const TASA = 36.5;
+interface Props {
+  data: KpiResumen;
+  tasa: number;
+}
 
-const KPIS = [
-  {
-    label: "Gasto acumulado",
-    valueUSD: 89.7,
-    deltaPct: 12.5,
-    deltaPositive: false, // gastar más es "negativo" para el negocio
-    icon: Banknote,
-    color: "primary" as const,
-  },
-  {
-    label: "Mes actual · mayo 2026",
-    valueUSD: 89.7,
-    deltaPct: 0,
-    deltaPositive: true,
-    icon: Calendar,
-    color: "accent" as const,
-  },
-  {
-    label: "Promedio diario",
-    valueUSD: 44.85,
-    deltaPct: 8.2,
-    deltaPositive: false,
-    icon: TrendingUp,
-    color: "info" as const,
-  },
-  {
-    label: "Compras del mes",
-    valueUSD: 5,
-    isCount: true,
-    deltaPct: 25,
-    deltaPositive: true,
-    icon: Receipt,
-    color: "success" as const,
-  },
-];
+export function DashboardKpis({ data, tasa }: Props) {
+  const mesLabel = format(new Date(), "MMMM yyyy", { locale: es });
 
-export function DashboardKpis() {
+  const kpis = [
+    {
+      label: "Gasto acumulado",
+      value: data.total_acumulado_usd,
+      delta: 0,
+      icon: Banknote,
+      color: "primary" as const,
+      isCount: false,
+    },
+    {
+      label: `Mes actual · ${mesLabel}`,
+      value: data.mes_actual_usd,
+      delta: data.delta_vs_mes_anterior_pct,
+      deltaPositive: data.delta_vs_mes_anterior_pct < 0, // gastar menos = positivo
+      icon: Calendar,
+      color: "accent" as const,
+      isCount: false,
+    },
+    {
+      label: "Promedio diario",
+      value: data.promedio_diario_usd,
+      delta: 0,
+      icon: TrendingUp,
+      color: "info" as const,
+      isCount: false,
+    },
+    {
+      label: "Compras del mes",
+      value: data.compras_mes,
+      delta: 0,
+      icon: Receipt,
+      color: "success" as const,
+      isCount: true,
+    },
+  ] as const;
+
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-      {KPIS.map((kpi, i) => (
-        <KpiCard key={kpi.label} {...kpi} delay={i * 0.08} />
+      {kpis.map((kpi, i) => (
+        <KpiCard
+          key={kpi.label}
+          {...kpi}
+          tasa={tasa}
+          delay={i * 0.08}
+          deltaPositive={"deltaPositive" in kpi ? kpi.deltaPositive : undefined}
+        />
       ))}
     </div>
   );
@@ -56,23 +76,25 @@ export function DashboardKpis() {
 
 interface KpiCardProps {
   label: string;
-  valueUSD: number;
-  deltaPct: number;
-  deltaPositive: boolean;
+  value: number;
+  delta: number;
+  deltaPositive?: boolean;
   icon: React.ComponentType<{ className?: string }>;
   color: "primary" | "accent" | "info" | "success";
-  isCount?: boolean;
+  isCount: boolean;
+  tasa: number;
   delay?: number;
 }
 
 function KpiCard({
   label,
-  valueUSD,
-  deltaPct,
+  value,
+  delta,
   deltaPositive,
   icon: Icon,
   color,
   isCount,
+  tasa,
   delay = 0,
 }: KpiCardProps) {
   return (
@@ -101,17 +123,17 @@ function KpiCard({
           </div>
           <div className="space-y-1">
             <CountUp
-              value={valueUSD}
+              value={value}
               isCount={isCount}
               className="font-mono text-2xl md:text-3xl font-semibold tracking-tight tabular-nums"
             />
             {!isCount && (
               <span className="block text-[11px] text-muted-foreground font-mono">
-                {formatBs(valueUSD * TASA, { compact: true })}
+                {formatBs(value * tasa, { compact: true })}
               </span>
             )}
           </div>
-          {deltaPct !== 0 && (
+          {delta !== 0 && (
             <div className="flex items-center gap-1.5">
               <span
                 className={cn(
@@ -122,11 +144,11 @@ function KpiCard({
                 )}
               >
                 {deltaPositive ? (
-                  <TrendingUp className="h-3 w-3" />
-                ) : (
                   <TrendingDown className="h-3 w-3" />
+                ) : (
+                  <TrendingUp className="h-3 w-3" />
                 )}
-                {deltaPct.toFixed(1)}%
+                {Math.abs(delta).toFixed(1)}%
               </span>
               <span className="text-[11px] text-muted-foreground">
                 vs mes anterior
@@ -145,7 +167,7 @@ function CountUp({
   className,
 }: {
   value: number;
-  isCount?: boolean;
+  isCount: boolean;
   className?: string;
 }) {
   const motionValue = useMotionValue(0);

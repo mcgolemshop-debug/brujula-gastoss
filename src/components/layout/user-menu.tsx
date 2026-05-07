@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { getInitials, colorFromName } from "@/lib/utils";
+import { signOutAction } from "@/app/(auth)/_actions";
 
 interface UserMenuProps {
   name: string;
@@ -81,10 +82,15 @@ export function UserMenu({ name, email, role, avatarUrl }: UserMenuProps) {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive">
-          <LogOut className="h-4 w-4" />
-          Cerrar sesión
-        </DropdownMenuItem>
+        <form action={signOutAction}>
+          <button
+            type="submit"
+            className="relative flex w-full cursor-pointer select-none items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none transition-colors text-destructive hover:bg-destructive/10 focus:bg-destructive/10"
+          >
+            <LogOut className="h-4 w-4" />
+            Cerrar sesión
+          </button>
+        </form>
       </DropdownMenuContent>
     </DropdownMenu>
   );

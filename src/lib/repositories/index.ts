@@ -1,8 +1,12 @@
 /**
  * Repository factory · Brújula Markets
  *
- * Auto-selecciona la implementación según las env vars disponibles.
+ * Auto-selecciona la implementación según las env vars disponibles + flag.
  * Componentes y server actions hacen `import { repo } from "@/lib/repositories"`.
+ *
+ * Flag NEXT_PUBLIC_DATA_SOURCE:
+ *   - "mock" → siempre MockRepository (default si no está configurado Supabase)
+ *   - "supabase" → SupabaseRepository (requiere URL + ANON_KEY)
  */
 
 import { mockRepository } from "./mock";
@@ -16,8 +20,15 @@ export function isSupabaseConfigured(): boolean {
   );
 }
 
+export function shouldUseSupabase(): boolean {
+  if (!isSupabaseConfigured()) return false;
+  // Si el flag está explícito a "mock", forzar mock incluso con Supabase configurado
+  if (process.env.NEXT_PUBLIC_DATA_SOURCE === "mock") return false;
+  return true;
+}
+
 export function getRepository(): Repository {
-  return isSupabaseConfigured() ? supabaseRepository : mockRepository;
+  return shouldUseSupabase() ? supabaseRepository : mockRepository;
 }
 
 /** Helper sugar — `import { repo } from "@/lib/repositories"` */

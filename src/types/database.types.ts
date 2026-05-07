@@ -1,9 +1,12 @@
 /**
  * Tipos de la base de datos de Supabase.
- * REGENERAR con: `pnpm db:types` después de cambiar migraciones.
+ * REGENERAR con: `pnpm db:types` después de aplicar migraciones.
  *
- * Por ahora un placeholder — se reemplaza cuando se inicia Supabase localmente.
+ * Por ahora un placeholder: nombres de tablas conocidos pero rows como `any`.
+ * Una vez aplicadas las migraciones, `pnpm db:types` regenera con tipos exactos.
  */
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export type Json =
   | string
   | number
@@ -12,12 +15,61 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type Database = {
+interface T {
+  Row: any;
+  Insert: any;
+  Update: any;
+  Relationships: [];
+}
+
+interface V {
+  Row: any;
+  Relationships: [];
+}
+
+export interface Database {
   public: {
-    Tables: Record<string, never>;
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: Record<string, never>;
-    CompositeTypes: Record<string, never>;
+    Tables: {
+      users: T;
+      categorias: T;
+      gastos: T;
+      mobiliario: T;
+      tasa_cambio: T;
+      facturas: T;
+      presupuestos: T;
+      auditoria: T;
+    };
+    Views: {
+      tasa_actual: V;
+      resumen_mensual_usuario: V;
+    };
+    Functions: { [k: string]: { Args: any; Returns: any } };
+    Enums: {
+      rol_usuario: "admin" | "empleado";
+      categoria_tipo: "variable" | "fijo" | "activo_fijo";
+      metodo_pago:
+        | "Efectivo $"
+        | "Efectivo Bs"
+        | "Transferencia"
+        | "Pago Móvil"
+        | "Zelle"
+        | "Tarjeta"
+        | "Binance"
+        | "Otro";
+      estado_mobiliario:
+        | "nuevo"
+        | "buen_estado"
+        | "regular"
+        | "necesita_reparacion"
+        | "dado_de_baja";
+      tipo_mobiliario:
+        | "mobiliario"
+        | "dispositivo"
+        | "equipo"
+        | "vehiculo"
+        | "otro";
+      accion_auditoria: "crear" | "editar" | "eliminar";
+    };
+    CompositeTypes: { [k: string]: any };
   };
-};
+}
