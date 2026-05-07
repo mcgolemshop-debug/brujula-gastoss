@@ -48,6 +48,10 @@ next-env.d.ts
 /supabase/.temp
 /supabase/.env
 
+# Backups (data sensible — no commitear)
+/backups/
+*.backup.json
+
 # IDE
 .vscode/*
 !.vscode/extensions.json

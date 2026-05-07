@@ -1,48 +1,50 @@
 # Brújula Markets · Sistema de Control de Gastos
 
-> Sistema multi-usuario, mobile-first, para el control de gastos operativos
-> de la oficina de Trading Forex de **Brújula Markets** (Caracas, Venezuela).
+> Sistema multi-usuario, mobile-first y PWA para el control de gastos
+> operativos de la oficina de Trading Forex de **Brújula Markets** (Caracas).
 
-![Status](https://img.shields.io/badge/status-Fase%201%20completa-blue)
+![Status](https://img.shields.io/badge/status-Producción%20ready-15803D)
 ![Stack](https://img.shields.io/badge/stack-Next.js%2016%20·%20Supabase-0a2540)
-![Cost](https://img.shields.io/badge/infra-$0%2Fmes-15803d)
+![Tests](https://img.shields.io/badge/tests-72%20passing-15803D)
+![Cost](https://img.shields.io/badge/infra-$0%2Fmes-D4A574)
 
 ---
 
 ## 🧭 Sobre el proyecto
 
-Aplicación web full-stack que reemplaza el Excel de control de gastos. Cada
-miembro del equipo (8 personas) registra sus compras del día, sube foto de
-factura, y la app convierte automáticamente USD ↔ Bolívares con la tasa del
-día. **Orlando** (admin) ve todo + edita; los demás solo sus propios gastos.
+App web full-stack que reemplaza un Excel para que el equipo de 8 personas
+registre todos los gastos operativos del día (comida, ferretería, mobiliario,
+etc.) con foto de factura, conversión USD↔Bs en vivo, y dashboards analíticos.
 
-### Funcionalidad por fase
-
-| Fase | Estado | Entregable |
-|------|--------|-----------|
-| **1 · Foundation** | ✅ Completada | Setup, branding, layout, dashboard mockeado, schema SQL, seed |
-| **2 · CRUD core** | 🔜 Siguiente | Auth real, lista de gastos, multi-step form con foto, inventario |
-| **3 · Analítica** | ⏳ | Reportes profundos, presupuestos, equipo, auditoría |
-| **4 · Polish** | ⏳ | PWA, offline, realtime, atajos de teclado |
-| **5 · Producción** | ⏳ | Tests, docs, deploy a Vercel + Supabase Cloud |
+| Fase | Estado | Entregable principal |
+|------|--------|--------------------|
+| **1 · Foundation** | ✅ | Setup Next.js + Tailwind + Supabase, branding Brújula, layout responsive, dashboard mockeado, schema SQL, seed |
+| **2 · CRUD core** | ✅ | Multi-step form con foto + cámara móvil, lista de gastos con filtros, inventario con CRUD, repository pattern |
+| **2.5 · Conexión real** | ✅ | Supabase Cloud, auth real, RLS verificada, seed con admin API |
+| **3 · Analítica + admin** | ✅ | /reportes con stacked bar + heatmap + export, /presupuestos con alertas, /equipo con admin actions, /auditoria con triggers SQL, /configuracion |
+| **4 · Polish** | ✅ | Cmd+K command palette, atajos de teclado, realtime con toasts, /comida especializada, PDF con branding, PWA básica |
+| **5 · Producción** | ✅ | Tests Vitest, error boundaries, loading states, health check, lazy imports, backup script, deploy a Vercel ready |
 
 ---
 
 ## 🛠️ Stack
 
-| Capa | Tecnología |
-|------|-----------|
-| **Framework** | Next.js 16 (App Router) + TypeScript estricto |
-| **Estilos** | Tailwind CSS v4 + tw-animate-css |
-| **Componentes** | Radix UI primitives + custom (filosofía shadcn) |
-| **Iconos** | Lucide React |
-| **Charts** | Recharts |
-| **Forms** | React Hook Form + Zod |
-| **Cache cliente** | TanStack Query v5 |
-| **Animaciones** | Framer Motion |
-| **Toasts** | Sonner |
-| **Backend** | Supabase (Postgres + Auth + Storage + RLS + Realtime) |
-| **Deploy** | Vercel (web) + Supabase Cloud (DB) — **plan free** |
+| Capa | Tecnología | Notas |
+|------|-----------|-------|
+| **Framework** | Next.js 16 (App Router) + TypeScript estricto | Turbopack, Server Actions, RSC |
+| **Estilos** | Tailwind CSS v4 + tw-animate-css | CSS vars + tokens Brújula |
+| **UI** | Radix UI primitives + shadcn-style custom | 13 primitivos + 6 shared + brand |
+| **Forms** | React Hook Form + Zod 4 | Multi-step con validación per-step |
+| **Cache** | TanStack Query v5 | + ReactQueryDevtools en dev |
+| **Charts** | Recharts 3 | Pie, stacked bar, heatmap custom |
+| **Animaciones** | Framer Motion 12 | Page transitions + count-up |
+| **Iconos** | Lucide React 1.x | + iconos de marca SVG inline |
+| **Toasts** | Sonner | RichColors con tema |
+| **Búsqueda** | cmdk | Cmd+K con search + nav + theme |
+| **PDF** | @react-pdf/renderer 4 | Lazy-loaded, branding inline |
+| **Backend** | Supabase Cloud | Postgres + Auth + Storage + RLS + Realtime |
+| **Tests** | Vitest 4 + Testing Library + jsdom | 72 tests pasando |
+| **Deploy** | Vercel + Supabase Cloud | Plan free para 8 usuarios |
 
 ---
 
@@ -52,44 +54,98 @@ día. **Orlando** (admin) ve todo + edita; los demás solo sus propios gastos.
 
 - **Node.js 20+** (probado con 24.15)
 - **pnpm 11+** — `npm install -g pnpm`
-- **Docker Desktop** (para `supabase start` local) — opcional para Fase 1
-- **Supabase CLI** — `npm install -g supabase` o `scoop install supabase`
+- **Cuenta Supabase Cloud** — https://supabase.com/dashboard
 
 ### Pasos
 
 ```bash
-# 1. Instalar dependencias
+# 1. Instalar deps
 pnpm install
 
 # 2. Variables de entorno
 cp .env.local.example .env.local
-# Edita .env.local con tus claves de Supabase (Fase 2 en adelante)
+# Editar .env.local con tus claves de Supabase
+# Ver "Variables de entorno" abajo
 
-# 3. Levantar Supabase local (cuando estés en Fase 2)
-pnpm supabase:start
-# Imprime URL + anon key — pégalos en .env.local
+# 3. Aplicar migraciones (primera vez):
+#    Ve a https://supabase.com/dashboard/project/<tu-ref>/sql/new
+#    Pega y corre los SQL de:
+#    - supabase/migrations/20260507000000_initial_schema.sql
+#    - supabase/migrations/20260507000001_audit_triggers.sql
 
-# 4. Aplicar migraciones + seed (Fase 2)
-pnpm supabase:reset
-# Esto corre 20260507000000_initial_schema.sql + seed.sql
+# 4. Crear usuarios + datos iniciales
+pnpm seed
 
-# 5. Generar tipos TypeScript desde la DB
-pnpm db:types
+# 5. Habilitar realtime para gastos (en SQL Editor):
+#    ALTER PUBLICATION supabase_realtime ADD TABLE public.gastos;
 
-# 6. Arrancar el dev server
+# 6. Arrancar
 pnpm dev
 # → http://localhost:3000
+# Login: orlando@brujula.local · password: Brujula2026!
 ```
 
-### En Fase 1 (sin Supabase aún)
+---
 
-La app funciona sin Supabase configurado: el middleware/proxy detecta variables
-de entorno faltantes y deja pasar todas las rutas. El "login" es simulado
-(cualquier credencial entra al dashboard con datos de muestra del Excel).
+## 🌐 Deploy a producción (Vercel · 10 minutos)
+
+### Paso 1 · Push a GitHub
 
 ```bash
-pnpm install
-pnpm dev   # → http://localhost:3000 funcional con datos mock
+git remote add origin git@github.com:tu-usuario/brujula-gastos.git
+git branch -M main
+git push -u origin main
+```
+
+### Paso 2 · Conectar a Vercel
+
+1. Ve a https://vercel.com/new
+2. **Import Git Repository** → selecciona `brujula-gastos`
+3. Framework: **Next.js** (auto-detectado)
+4. Build Command: `pnpm build` (auto)
+5. Install Command: `pnpm install` (auto)
+
+### Paso 3 · Variables de entorno
+
+En Vercel → **Project Settings → Environment Variables**, agrega (ver `.env.production.example`):
+
+```
+NEXT_PUBLIC_SUPABASE_URL          → https://jzkwqkazwhplzhnxtbex.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY     → sb_publishable_...
+SUPABASE_SERVICE_ROLE_KEY         → sb_secret_... (rota la actual primero)
+NEXT_PUBLIC_DATA_SOURCE           → supabase
+NEXT_PUBLIC_APP_URL               → https://tu-app.vercel.app
+```
+
+Marca **Production**, **Preview** y **Development** para cada una.
+
+### Paso 4 · Configurar Supabase para producción
+
+En el dashboard de Supabase:
+1. **Authentication → URL Configuration → Site URL**: `https://tu-app.vercel.app`
+2. **Authentication → URL Configuration → Redirect URLs**: agrega `https://tu-app.vercel.app/**`
+3. (Opcional) **Authentication → Email Templates**: personaliza con branding Brújula
+
+### Paso 5 · Deploy
+
+Click **Deploy**. En 2-3 minutos:
+- ✅ App live en `https://tu-proyecto.vercel.app`
+- ✅ HTTPS automático con certificado Let's Encrypt
+- ✅ Cada `git push` despliega automáticamente
+- ✅ Preview deployments en cada PR
+
+### Paso 6 · Health check
+
+Verifica que todo esté OK: `curl https://tu-app.vercel.app/api/health`
+
+```json
+{
+  "status": "ok",
+  "timestamp": "2026-05-07T15:30:00.000Z",
+  "version": "0.1.0",
+  "data_source": "supabase",
+  "db": { "ok": true, "latency_ms": 87 }
+}
 ```
 
 ---
@@ -98,128 +154,191 @@ pnpm dev   # → http://localhost:3000 funcional con datos mock
 
 ```
 .
-├── public/                          # Assets estáticos
+├── public/
+│   ├── icons/           # Iconos PWA (192, 512)
+│   └── manifest.json    # PWA manifest
+├── scripts/
+│   ├── seed.ts          # Crea usuarios + categorías + datos
+│   └── backup.ts        # Dump JSON de todas las tablas
 ├── src/
 │   ├── app/
-│   │   ├── (auth)/login/            # Auth split-screen
-│   │   ├── (dashboard)/             # Layout con sidebar + topbar
-│   │   │   ├── dashboard/           # Vista ejecutiva (KPIs, gráficos)
-│   │   │   ├── gastos/              # Lista y nuevo gasto (Fase 2)
-│   │   │   ├── inventario/          # Mobiliario (Fase 2)
-│   │   │   └── ...                  # Otras secciones (stubs)
-│   │   ├── globals.css              # Brand tokens (CSS vars + @theme)
-│   │   └── layout.tsx               # Root: fonts + providers
+│   │   ├── (auth)/      # /login + auth actions
+│   │   ├── (dashboard)/ # Layout principal con sidebar
+│   │   │   ├── dashboard/
+│   │   │   ├── gastos/[id]/
+│   │   │   ├── gastos/nuevo/
+│   │   │   ├── inventario/
+│   │   │   ├── reportes/   # KPIs, charts, export PDF/Excel/CSV
+│   │   │   ├── presupuestos/   # Admin: tope mensual + alertas
+│   │   │   ├── equipo/         # Admin: stats + activar/desactivar
+│   │   │   ├── auditoria/      # Admin: log de cambios
+│   │   │   ├── configuracion/  # Tasa cambio + categorías
+│   │   │   └── comida/         # Vista especializada
+│   │   ├── api/health/
+│   │   ├── error.tsx           # Error boundary global
+│   │   ├── not-found.tsx       # 404 custom
+│   │   ├── globals.css         # Brand tokens
+│   │   └── layout.tsx          # Root + fonts + providers + manifest
 │   ├── components/
-│   │   ├── brand/                   # BrujulaIcon, BrujulaLogo
-│   │   ├── layout/                  # Sidebar, Topbar, MobileBottomNav, etc.
-│   │   ├── providers/               # Theme, Query, Tooltip + Toaster
-│   │   └── ui/                      # Button, Input, Card, ...
+│   │   ├── brand/              # BrujulaIcon, BrujulaLogo
+│   │   ├── command-palette/    # Cmd+K
+│   │   ├── layout/             # Sidebar, Topbar, MobileBottomNav
+│   │   ├── providers/          # Theme, Query, Realtime, Tooltip
+│   │   ├── shared/             # MoneyDisplay, ImageLightbox, etc.
+│   │   └── ui/                 # 22 primitivos (Button, Dialog, etc.)
+│   ├── hooks/
+│   │   └── use-keyboard-shortcuts.ts
 │   ├── lib/
-│   │   ├── brand.ts                 # Tokens de marca (TS mirror del CSS)
-│   │   ├── constants.ts             # Categorías, equipo, métodos de pago...
-│   │   ├── supabase/                # Clientes browser/server/middleware
-│   │   └── utils.ts                 # cn(), formatUSD/Bs, getInitials
-│   ├── types/
-│   │   └── database.types.ts        # Auto-generado desde Supabase
-│   └── proxy.ts                     # Middleware (Next 16 lo llama "proxy")
+│   │   ├── repositories/       # Pattern: Mock + Supabase
+│   │   ├── supabase/           # Browser, Server, Admin clients
+│   │   ├── validations/        # Schemas Zod
+│   │   ├── brand.ts            # Tokens TS mirror del CSS
+│   │   ├── constants.ts        # Datos del Excel
+│   │   └── utils.ts            # cn, formatUSD/Bs, etc.
+│   ├── proxy.ts                # Middleware (Next 16)
+│   └── types/
+│       ├── database.types.ts   # Auto-gen via supabase gen types
+│       └── domain.ts           # Tipos de dominio
 ├── supabase/
-│   ├── config.toml                  # Config local de `supabase start`
+│   ├── config.toml
 │   ├── migrations/
-│   │   └── 20260507000000_initial_schema.sql
-│   └── seed.sql                     # 8 usuarios + 12 categorías + tasa + 10 mobiliario + 5 gastos
-├── .env.local.example
-├── package.json
-└── pnpm-workspace.yaml
+│   │   ├── 20260507000000_initial_schema.sql
+│   │   └── 20260507000001_audit_triggers.sql
+│   └── seed.sql                # Para `supabase db reset` local
+├── tests/                      # Vitest
+│   ├── setup.ts
+│   ├── utils.test.ts
+│   ├── validations.test.ts
+│   └── mock-repository.test.ts
+└── vercel.json                 # Config de deploy
 ```
 
 ---
 
-## 🗂️ Modelo de datos (resumen)
+## 🗂️ Modelo de datos
 
-| Tabla | Filas | Notas |
-|-------|-------|-------|
-| `users` | 8 | Extiende `auth.users`. Roles: `admin` (Orlando) / `empleado` |
-| `categorias` | 12 | Comida, Ferretería, ..., Otros · 3 tipos: variable / fijo / activo_fijo |
-| `gastos` | seed: 5 | Tabla principal. `total_usd` y `total_bs` son **generated columns** |
-| `mobiliario` | seed: 10 | Inventario. Estados: nuevo / buen_estado / regular / necesita_reparacion / dado_de_baja |
-| `tasa_cambio` | seed: 36.5 | Histórico (insert-only). View `tasa_actual` siempre da la última |
-| `facturas` | 0 | Metadata de fotos en `storage.facturas` |
-| `presupuestos` | 0 | Por categoría/mes — alertas a 80% y 100% |
-| `auditoria` | 0 | Log de crear/editar/eliminar (Fase 3) |
+| Tabla | Filas (seed) | Notas |
+|-------|--------------|-------|
+| `users` | 8 | Extiende `auth.users`. Roles: admin / empleado |
+| `categorias` | 12 | Comida, Ferretería, ..., Otros · 3 tipos |
+| `gastos` | 5 | Tabla principal. `total_usd`, `total_bs` son **generated columns** |
+| `mobiliario` | 10 | 5 estados · ubicaciones |
+| `tasa_cambio` | 1 (insert-only) | Cada cambio nuevo registro · gastos viejos conservan tasa |
+| `facturas` | 0 | Metadata de fotos en bucket `facturas` |
+| `presupuestos` | 0 | Por categoria/mes/anio |
+| `auditoria` | auto | Triggers en gastos/mobiliario/categorias/presupuestos/tasa |
 
-**RLS habilitada en todas las tablas.** Empleados solo ven sus gastos; admin
-ve y edita todo. Tasa de cambio y categorías solo las modifica admin.
-
----
-
-## 👥 Usuarios de seed (dev local)
-
-Password universal en seed: `Brujula2026!`
-
-| Email | Rol | Cargo |
-|-------|-----|-------|
-| orlando@brujula.local | **admin** | Director / Jefe |
-| arlet@brujula.local | empleado | Trader |
-| lenin@brujula.local | empleado | Trader |
-| christian@brujula.local | empleado | Trader |
-| diego@brujula.local | empleado | Trader |
-| sandro@brujula.local | empleado | Trader |
-| luis@brujula.local | empleado | Trader |
-| gean@brujula.local | empleado | Trader |
+**RLS habilitada en todas las tablas.**
 
 ---
 
 ## 🎨 Sistema de diseño · Brújula Markets
 
-| Token | Valor | Uso |
-|-------|-------|-----|
-| `--brand-navy` | `#0A2540` | Primary, fondos oscuros, texto sobre cream |
-| `--brand-gold` | `#D4A574` | Accent, CTAs importantes, highlight North compass |
-| `--brand-cream` | `#FAF7F2` | Background light theme, texto sobre navy |
-| `--brand-graphite` | `#5F5E5A` | Texto secundario, líneas sutiles |
+| Token | Hex | Uso |
+|-------|-----|-----|
+| `--brand-navy` | `#0A2540` | Primary, fondos oscuros |
+| `--brand-gold` | `#D4A574` | Accent, North compass |
+| `--brand-cream` | `#FAF7F2` | Background light theme |
+| `--brand-graphite` | `#5F5E5A` | Texto secundario |
 
-Tipografías: **Inter** (UI), **Crimson Pro** (titulares serif), **JetBrains Mono** (números/códigos).
+Tipografías: **Inter** (UI) + **Crimson Pro** (titulares serif) + **JetBrains Mono** (números).
 
 ---
 
 ## 🧪 Comandos disponibles
 
 ```bash
-pnpm dev              # Dev server con Turbopack en :3000
+pnpm dev              # Dev server con Turbopack
 pnpm build            # Build de producción
 pnpm start            # Servir build
 pnpm lint             # ESLint
 pnpm type-check       # TypeScript --noEmit
 pnpm format           # Prettier --write
-pnpm format:check     # Prettier --check
 
-# Supabase (Fase 2)
-pnpm supabase:start   # Levanta Postgres + Auth + Storage local en Docker
-pnpm supabase:stop    # Detiene
-pnpm supabase:status  # Muestra URLs y keys
-pnpm supabase:reset   # Recrea DB desde migrations + seed
-pnpm db:types         # Regenera types/database.types.ts
+pnpm test             # Vitest (run once, 72 tests)
+pnpm test:watch       # Vitest watch mode
+pnpm test:ui          # Vitest UI
+pnpm test:coverage    # Reporte de cobertura
+
+pnpm seed             # Crea usuarios + categorías + datos
+pnpm backup           # Dump JSON de Supabase a /backups/
+pnpm db:push          # supabase db push (requiere link)
+pnpm db:types         # Regenera src/types/database.types.ts
 ```
 
 ---
 
-## 🚢 Deploy a producción (Fase 5)
+## 🔐 Seguridad
 
-1. **Crear proyecto Supabase** en supabase.com (plan free: 500 MB DB, 1 GB Storage, 50K MAU).
-2. **Push migrations**: `supabase link --project-ref <ref> && supabase db push`
-3. **Crear usuarios**: vía dashboard de Supabase o script `scripts/seed-auth-users.ts` (Fase 2).
-4. **Conectar a Vercel**: importa el repo de GitHub, agrega env vars en dashboard de Vercel.
-5. **Push a `main`** → deploy automático.
+- **RLS** en todas las tablas. Empleados solo ven sus gastos. Admin ve todo.
+- **service_role** key SOLO en server actions (admin operations).
+- **Rotación de keys**: cuando compartes en chat o screenshots, rota en
+  Dashboard → Settings → API Keys → Roll.
+- **Auditoría completa**: cada create/edit/delete deja huella en `auditoria`.
+- **Backups**: ejecuta `pnpm backup` periódicamente. Genera JSON local.
+- **HTTPS**: automático en Vercel.
 
 ---
 
-## 📚 Decisiones arquitectónicas (resumen)
+## ⚡ Atajos de teclado
 
-- **Cliente Supabase nativo** en lugar de Drizzle ORM (RLS-first, menos boilerplate, types auto-generados con `supabase gen types`)
-- **Custom UI primitives** sobre Radix en lugar de `shadcn add` (más control de la marca, sin el bug de `pnpm dlx`)
-- **`supabase start`** (CLI oficial) en lugar de Docker Compose custom + MinIO (paridad 100% con prod, gratis)
-- **PWA + Offline + Realtime → Fase 4**, no v1 (evitar complejidad de conflict-resolution antes de tener el core sólido)
-- **OCR de facturas → Fase 5+ con API de Anthropic**, no Tesseract.js (menos peso, más preciso)
+| Atajo | Acción |
+|-------|--------|
+| `⌘K` / `Ctrl+K` | Búsqueda global · navegación · cambio de tema |
+| `N` | Nuevo gasto |
+| `D` | Dashboard |
+| `G` | Gastos |
+| `I` | Inventario |
+| `R` | Reportes |
+| `?` | Ver atajos |
+
+(Las letras solo aplican fuera de inputs.)
+
+---
+
+## 📚 Decisiones arquitectónicas
+
+- **Repository pattern** (Mock + Supabase) → cambiar de DB sin tocar UI
+- **Cliente Supabase nativo** sobre Drizzle → menos boilerplate, RLS-first
+- **Server Actions** sobre API routes → menos código, mejor DX
+- **Zod 4** con `.preprocess()` para normalizar inputs antes de validar
+- **Mock repository** → desarrollo sin DB, perfecto para CI o demos
+- **Generated columns SQL** para `total_usd`/`total_bs` → consistencia garantizada
+- **Tasa de cambio insert-only** → auditoría natural sin update history
+- **Lazy import del PDF** → bundle inicial liviano (~500KB ahorrados)
+- **PWA con SVG icons** → cero generación de PNGs en build
+
+---
+
+## 🛟 Troubleshooting
+
+### "ERR_PNPM_IGNORED_BUILDS"
+Ya está resuelto en `pnpm-workspace.yaml`. Si vuelve a aparecer:
+```bash
+pnpm install
+```
+
+### "Database error creating new user" en seed
+Migration parchada (search_path en `handle_new_user`). Si re-aplicas migrations
+y vuelve, corre el patch SQL de `migrations/20260507000000_initial_schema.sql`.
+
+### Realtime no llega
+Verifica en SQL Editor:
+```sql
+SELECT pubname, tablename FROM pg_publication_tables WHERE pubname = 'supabase_realtime';
+```
+Debe incluir `gastos`. Si no:
+```sql
+ALTER PUBLICATION supabase_realtime ADD TABLE public.gastos;
+```
+
+### Build falla por tipos en Supabase queries
+Regenera tipos:
+```bash
+pnpm exec supabase login
+pnpm exec supabase link --project-ref tu-ref
+pnpm db:types
+```
 
 ---
 

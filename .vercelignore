@@ -1,0 +1,12 @@
+# Archivos que no deben subirse a Vercel
+.env
+.env*.local
+.env.production
+backups/
+supabase/.branches
+supabase/.temp
+.claude/settings.local.json
+*.tsbuildinfo
+coverage/
+.idea
+.vscode/*.local

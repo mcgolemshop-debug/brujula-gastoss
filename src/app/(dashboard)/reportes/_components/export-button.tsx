@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import type { Gasto } from "@/types/domain";
-import { downloadPdfReport } from "./pdf-report";
+
+// PDF lazy-loaded para no inflar el bundle inicial (~500KB).
 
 interface Props {
   gastos: Gasto[];
@@ -82,6 +83,8 @@ export function ExportButton({
   async function exportPDF() {
     setPdfLoading(true);
     try {
+      // Dynamic import: el bundle PDF (~500KB) solo se descarga al primer click
+      const { downloadPdfReport } = await import("./pdf-report");
       await downloadPdfReport({ gastos, rango, tasa, generadoPor });
       toast.success("PDF generado", { description: `${gastos.length} gastos` });
     } catch (e) {
