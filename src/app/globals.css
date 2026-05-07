@@ -1,0 +1,209 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* === Brújula Markets · Brand Palette === */
+  --brand-navy: #0a2540;
+  --brand-navy-light: #143659;
+  --brand-navy-dark: #061829;
+  --brand-gold: #d4a574;
+  --brand-gold-light: #e2bd92;
+  --brand-gold-dark: #b88857;
+  --brand-cream: #faf7f2;
+  --brand-cream-warm: #f3ede1;
+  --brand-graphite: #5f5e5a;
+
+  /* === Semantic tokens · Light theme === */
+  --background: #faf7f2;
+  --foreground: #0a2540;
+  --card: #ffffff;
+  --card-foreground: #0a2540;
+  --popover: #ffffff;
+  --popover-foreground: #0a2540;
+  --primary: #0a2540;
+  --primary-foreground: #faf7f2;
+  --secondary: #f0ebde;
+  --secondary-foreground: #0a2540;
+  --muted: #ece6d6;
+  --muted-foreground: #5f5e5a;
+  --accent: #d4a574;
+  --accent-foreground: #0a2540;
+  --destructive: #c2410c;
+  --destructive-foreground: #faf7f2;
+  --success: #15803d;
+  --success-foreground: #faf7f2;
+  --warning: #b88857;
+  --warning-foreground: #0a2540;
+  --info: #1e40af;
+  --info-foreground: #faf7f2;
+  --border: #e0d8c4;
+  --input: #ece6d6;
+  --ring: #d4a574;
+  --radius: 0.75rem;
+
+  /* Chart colors — derivados de la marca */
+  --chart-1: #0a2540;
+  --chart-2: #d4a574;
+  --chart-3: #5f5e5a;
+  --chart-4: #b88857;
+  --chart-5: #143659;
+}
+
+.dark {
+  /* === Semantic tokens · Dark theme — navy-first === */
+  --background: #061829;
+  --foreground: #faf7f2;
+  --card: #0a2540;
+  --card-foreground: #faf7f2;
+  --popover: #0e2c4e;
+  --popover-foreground: #faf7f2;
+  --primary: #d4a574;
+  --primary-foreground: #061829;
+  --secondary: #143659;
+  --secondary-foreground: #faf7f2;
+  --muted: #143659;
+  --muted-foreground: #a8b3c4;
+  --accent: #d4a574;
+  --accent-foreground: #061829;
+  --destructive: #ef4444;
+  --destructive-foreground: #faf7f2;
+  --success: #22c55e;
+  --success-foreground: #061829;
+  --warning: #e2bd92;
+  --warning-foreground: #061829;
+  --info: #60a5fa;
+  --info-foreground: #061829;
+  --border: #1a3d63;
+  --input: #143659;
+  --ring: #d4a574;
+
+  --chart-1: #d4a574;
+  --chart-2: #faf7f2;
+  --chart-3: #a8b3c4;
+  --chart-4: #e2bd92;
+  --chart-5: #60a5fa;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-navy-light: var(--brand-navy-light);
+  --color-brand-navy-dark: var(--brand-navy-dark);
+  --color-brand-gold: var(--brand-gold);
+  --color-brand-gold-light: var(--brand-gold-light);
+  --color-brand-gold-dark: var(--brand-gold-dark);
+  --color-brand-cream: var(--brand-cream);
+  --color-brand-cream-warm: var(--brand-cream-warm);
+  --color-brand-graphite: var(--brand-graphite);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-crimson), "Crimson Pro", Georgia, "Times New Roman", serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", Menlo, monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  *:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-serif);
+    letter-spacing: -0.015em;
+    font-weight: 500;
+  }
+  /* Dejar overflow del scroll suave */
+  ::selection {
+    background-color: var(--color-accent);
+    color: var(--color-accent-foreground);
+  }
+}
+
+@layer utilities {
+  /* Gradiente sutil de marca para tarjetas hero */
+  .bg-brand-gradient {
+    background: linear-gradient(135deg, var(--brand-navy) 0%, var(--brand-navy-light) 100%);
+  }
+  .bg-brand-gradient-gold {
+    background: linear-gradient(135deg, var(--brand-gold-dark) 0%, var(--brand-gold) 50%, var(--brand-gold-light) 100%);
+  }
+  /* Shadow estilo macOS — multi-capa */
+  .shadow-elegant {
+    box-shadow:
+      0 1px 2px rgba(10, 37, 64, 0.04),
+      0 4px 12px rgba(10, 37, 64, 0.06),
+      0 16px 32px -16px rgba(10, 37, 64, 0.08);
+  }
+  .dark .shadow-elegant {
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.2),
+      0 4px 12px rgba(0, 0, 0, 0.25),
+      0 16px 32px -16px rgba(0, 0, 0, 0.3);
+  }
+  /* Tipografía mono para números */
+  .font-numeric {
+    font-family: var(--font-mono);
+    font-feature-settings: "tnum" 1, "ss01" 1;
+    font-variant-numeric: tabular-nums;
+  }
+  /* Animation utilities */
+  .animate-in-fade {
+    animation: fade-in 0.4s ease-out;
+  }
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}

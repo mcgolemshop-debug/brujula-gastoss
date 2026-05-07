@@ -1,0 +1,16 @@
+allowBuilds:
+  sharp: true
+  unrs-resolver: true
+  "@tailwindcss/oxide": true
+  msw: true
+  core-js: true
+  esbuild: true
+  "@swc/core": true
+onlyBuiltDependencies:
+  - sharp
+  - unrs-resolver
+  - "@tailwindcss/oxide"
+  - msw
+  - core-js
+  - esbuild
+  - "@swc/core"
