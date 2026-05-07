@@ -1,0 +1,111 @@
+"use client";
+
+import * as React from "react";
+import { Download, FileSpreadsheet, FileText } from "lucide-react";
+import * as XLSX from "xlsx";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { toast } from "sonner";
+import type { Gasto } from "@/types/domain";
+
+interface Props {
+  gastos: Gasto[];
+  rango: { desde: string; hasta: string };
+}
+
+export function ExportButton({ gastos, rango }: Props) {
+  function buildRows() {
+    return gastos.map((g) => ({
+      Codigo: g.codigo,
+      Fecha: g.fecha,
+      Hora: g.hora,
+      Persona: g.usuario?.nombre_completo ?? "",
+      Categoria: g.categoria?.nombre ?? "",
+      Descripcion: g.descripcion,
+      Cantidad: g.cantidad,
+      Unidad: g.unidad,
+      Items: g.items,
+      "Precio unit USD": g.precio_unitario_usd,
+      "Total USD": g.total_usd,
+      "Tasa Bs/USD": g.tasa_cambio,
+      "Total Bs": g.total_bs,
+      "Metodo de pago": g.metodo_pago,
+      "Lugar de compra": g.lugar_compra ?? "",
+      "N factura": g.numero_factura ?? "",
+      "Va a inventario": g.va_a_inventario ? "Sí" : "No",
+      Observaciones: g.observaciones ?? "",
+    }));
+  }
+
+  function exportCSV() {
+    const rows = buildRows();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const csv = XLSX.utils.sheet_to_csv(ws);
+    // BOM para que Excel abra UTF-8 correctamente
+    const blob = new Blob(["﻿" + csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+    triggerDownload(
+      blob,
+      `brujula-gastos-${rango.desde}-a-${rango.hasta}.csv`
+    );
+    toast.success("CSV exportado", {
+      description: `${rows.length} gastos`,
+    });
+  }
+
+  function exportXLSX() {
+    const rows = buildRows();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Gastos");
+
+    // Auto-width
+    const cols = Object.keys(rows[0] ?? {}).map((k) => ({
+      wch: Math.max(k.length, 14),
+    }));
+    ws["!cols"] = cols;
+
+    XLSX.writeFile(wb, `brujula-gastos-${rango.desde}-a-${rango.hasta}.xlsx`);
+    toast.success("Excel exportado", {
+      description: `${rows.length} gastos`,
+    });
+  }
+
+  function triggerDownload(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-2">
+          <Download className="h-4 w-4" />
+          Exportar
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={exportXLSX}>
+          <FileSpreadsheet className="h-4 w-4" />
+          Excel (.xlsx)
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={exportCSV}>
+          <FileText className="h-4 w-4" />
+          CSV (UTF-8)
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}

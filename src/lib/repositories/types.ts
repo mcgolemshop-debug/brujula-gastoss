@@ -16,6 +16,7 @@ import type {
   NuevoGastoInput,
   NuevoMobiliarioInput,
   PaginatedResult,
+  Presupuesto,
   TasaCambio,
   User,
 } from "@/types/domain";
@@ -79,6 +80,21 @@ export interface FacturasRepository {
   delete(id: string): Promise<void>;
 }
 
+export interface PresupuestosRepository {
+  /** Lista presupuestos del mes/año especificado, con su gasto consumido */
+  listConGasto(
+    mes: number,
+    anio: number
+  ): Promise<(Presupuesto & { gastado_usd: number })[]>;
+  upsert(input: {
+    categoria_id: string;
+    mes: number;
+    anio: number;
+    monto_usd: number;
+  }): Promise<Presupuesto>;
+  delete(id: string): Promise<void>;
+}
+
 export interface Repository {
   users: UsersRepository;
   categorias: CategoriasRepository;
@@ -86,4 +102,5 @@ export interface Repository {
   mobiliario: MobiliarioRepository;
   tasaCambio: TasaCambioRepository;
   facturas: FacturasRepository;
+  presupuestos: PresupuestosRepository;
 }

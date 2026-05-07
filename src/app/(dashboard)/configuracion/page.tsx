@@ -1,22 +1,36 @@
 import type { Metadata } from "next";
-import { ComingSoon } from "@/components/coming-soon";
+import { redirect } from "next/navigation";
+import { repo } from "@/lib/repositories";
+import { PageHeader } from "@/components/shared/page-header";
+import { TasaSection } from "./_components/tasa-section";
+import { CategoriasSection } from "./_components/categorias-section";
 
 export const metadata: Metadata = { title: "Configuración" };
 
-export default function ConfiguracionPage() {
+export default async function ConfiguracionPage() {
+  const [me, tasa, historico, categorias] = await Promise.all([
+    repo.users.current(),
+    repo.tasaCambio.actual(),
+    repo.tasaCambio.historico(),
+    repo.categorias.list(),
+  ]);
+
+  if (!me) redirect("/login");
+  const isAdmin = me.rol === "admin";
+
   return (
-    <ComingSoon
-      title="Configuración"
-      description="Tasa de cambio Bs/USD, categorías personalizadas, preferencias de usuario y tema. La tasa actual es 36.5 Bs / 1 USD según el último Excel."
-      phase="Fase 3"
-      features={[
-        "Tasa de cambio: input grande con histórico de cambios",
-        "Gestión de categorías (admin): agregar/editar/desactivar",
-        "Preferencias de usuario: tema, idioma, notificaciones",
-        "Información de la app: versión, créditos",
-        "Backup y restauración de datos",
-        "Configuración de moneda primaria del display",
-      ]}
-    />
+    <div className="container max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
+      <PageHeader
+        eyebrow="Sistema"
+        title="Configuración"
+        description="Tasa de cambio, categorías y preferencias de la app."
+      />
+      <TasaSection
+        actual={tasa}
+        historico={historico.slice(0, 10)}
+        isAdmin={isAdmin}
+      />
+      <CategoriasSection categorias={categorias} isAdmin={isAdmin} />
+    </div>
   );
 }

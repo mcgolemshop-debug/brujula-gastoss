@@ -67,11 +67,12 @@ function asOne<T>(data: unknown): T {
   return data as T;
 }
 
-function joinShape(): string {
+function joinShape(includeFacturas = false): string {
+  const facturas = includeFacturas ? ",\n    facturas(*)" : "";
   return `
     *,
     usuario:users!gastos_usuario_id_fkey(id, nombre_completo, email, rol, cargo, avatar_url, activo, created_at),
-    categoria:categorias!gastos_categoria_id_fkey(*)
+    categoria:categorias!gastos_categoria_id_fkey(*)${facturas}
   `;
 }
 
@@ -217,7 +218,7 @@ const supabaseGastos: GastosRepository = {
     const sb = await client();
     const { data, error } = await sb
       .from("gastos")
-      .select(joinShape())
+      .select(joinShape(true))
       .eq("id", id)
       .maybeSingle();
     checkErr(error, "gastos.byId");
@@ -575,6 +576,91 @@ const supabaseFacturas: FacturasRepository = {
 };
 
 // =====================================================================
+// Presupuestos
+// =====================================================================
+
+const supabasePresupuestos = {
+  async listConGasto(mes: number, anio: number) {
+    const sb = await client();
+    const ymStart = `${anio}-${String(mes).padStart(2, "0")}-01`;
+    const nextMes =
+      mes === 12
+        ? `${anio + 1}-01-01`
+        : `${anio}-${String(mes + 1).padStart(2, "0")}-01`;
+
+    const { data: presupuestosData, error: pErr } = await sb
+      .from("presupuestos")
+      .select("*, categoria:categorias!presupuestos_categoria_id_fkey(*)")
+      .eq("mes", mes)
+      .eq("anio", anio);
+    checkErr(pErr, "presupuestos.list");
+
+    type PresupuestoRow = {
+      id: string;
+      categoria_id: string;
+      mes: number;
+      anio: number;
+      monto_usd: number;
+      created_at: string;
+      categoria?: Categoria;
+    };
+    const presupuestos = asArray<PresupuestoRow>(presupuestosData);
+    if (presupuestos.length === 0) return [];
+
+    const { data: gastosData, error: gErr } = await sb
+      .from("gastos")
+      .select("categoria_id, total_usd")
+      .gte("fecha", ymStart)
+      .lt("fecha", nextMes);
+    checkErr(gErr, "presupuestos.gastos");
+
+    type GastoSum = { categoria_id: string; total_usd: number };
+    const gastos = asArray<GastoSum>(gastosData);
+    const gastadoPorCat = new Map<string, number>();
+    for (const g of gastos) {
+      gastadoPorCat.set(
+        g.categoria_id,
+        (gastadoPorCat.get(g.categoria_id) ?? 0) + Number(g.total_usd)
+      );
+    }
+
+    return presupuestos.map((p) => ({
+      ...p,
+      gastado_usd: gastadoPorCat.get(p.categoria_id) ?? 0,
+    }));
+  },
+
+  async upsert(input: {
+    categoria_id: string;
+    mes: number;
+    anio: number;
+    monto_usd: number;
+  }) {
+    const sb = await client();
+    const { data, error } = await sb
+      .from("presupuestos")
+      .upsert(input, { onConflict: "categoria_id,mes,anio" })
+      .select("*")
+      .single();
+    checkErr(error, "presupuestos.upsert");
+    return asOne<{
+      id: string;
+      categoria_id: string;
+      mes: number;
+      anio: number;
+      monto_usd: number;
+      created_at: string;
+    }>(data);
+  },
+
+  async delete(id: string) {
+    const sb = await client();
+    const { error } = await sb.from("presupuestos").delete().eq("id", id);
+    checkErr(error, "presupuestos.delete");
+  },
+};
+
+// =====================================================================
 // Repository (export)
 // =====================================================================
 
@@ -585,4 +671,5 @@ export const supabaseRepository: Repository = {
   mobiliario: supabaseMobiliario,
   tasaCambio: supabaseTasa,
   facturas: supabaseFacturas,
+  presupuestos: supabasePresupuestos,
 };

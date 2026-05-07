@@ -1,22 +1,50 @@
 import type { Metadata } from "next";
-import { ComingSoon } from "@/components/coming-soon";
+import { redirect } from "next/navigation";
+import { repo } from "@/lib/repositories";
+import { PageHeader } from "@/components/shared/page-header";
+import { PresupuestosContent } from "./_components/presupuestos-content";
 
 export const metadata: Metadata = { title: "Presupuestos" };
 
-export default function PresupuestosPage() {
+interface PageProps {
+  searchParams: Promise<{ mes?: string; anio?: string }>;
+}
+
+export default async function PresupuestosPage({ searchParams }: PageProps) {
+  const sp = await searchParams;
+  const today = new Date();
+  const mes = sp.mes ? parseInt(sp.mes, 10) : today.getMonth() + 1;
+  const anio = sp.anio ? parseInt(sp.anio, 10) : today.getFullYear();
+
+  const [currentUser, categorias, presupuestos, tasa] = await Promise.all([
+    repo.users.current(),
+    repo.categorias.list(),
+    repo.presupuestos.listConGasto(mes, anio),
+    repo.tasaCambio.actual(),
+  ]);
+
+  if (!currentUser) redirect("/login");
+  const isAdmin = currentUser.rol === "admin";
+
   return (
-    <ComingSoon
-      title="Presupuestos"
-      description="Define presupuesto mensual por categoría. Alertas automáticas al superar el 80% y 100%. Solo accesible para Admin."
-      phase="Fase 3"
-      features={[
-        "Presupuesto mensual por categoría",
-        "Barra de progreso visual: usado / disponible",
-        "Alertas al superar 80% (warning) y 100% (crítico)",
-        "Notificaciones in-app cuando un presupuesto se rompe",
-        "Histórico mes a mes",
-        "Solo Admin puede definir y editar",
-      ]}
-    />
+    <div className="container max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
+      <PageHeader
+        eyebrow="Control mensual"
+        title="Presupuestos"
+        description={
+          isAdmin
+            ? "Define un tope mensual por categoría. Recibirás alertas cuando se consuma el 80% y al rebasarlo."
+            : "Vista de los presupuestos definidos por el admin."
+        }
+      />
+      <PresupuestosContent
+        categorias={categorias}
+        presupuestos={presupuestos}
+        tasa={tasa.valor_bs_por_usd}
+        mes={mes}
+        anio={anio}
+        isAdmin={isAdmin}
+      />
+    </div>
   );
 }

@@ -199,6 +199,7 @@ function joinGasto(g: Gasto): Gasto {
     ...g,
     usuario: store.users.get(g.usuario_id),
     categoria: store.categorias.get(g.categoria_id) ?? undefined,
+    facturas: [],
   };
 }
 
@@ -487,7 +488,6 @@ export const mockTasaCambio: TasaCambioRepository = {
 
 export const mockFacturas: FacturasRepository = {
   async upload(_gastoId, _file, fileName, _userId) {
-    // Sin storage real, devolvemos un placeholder
     return {
       url: `/_mock/facturas/${fileName}`,
       id: uid("fac"),
@@ -498,6 +498,79 @@ export const mockFacturas: FacturasRepository = {
   },
 };
 
+// Presupuestos in-memory
+const presupuestosStore = new Map<
+  string,
+  {
+    id: string;
+    categoria_id: string;
+    mes: number;
+    anio: number;
+    monto_usd: number;
+    created_at: string;
+  }
+>();
+
+export const mockPresupuestos = {
+  async listConGasto(mes: number, anio: number) {
+    const ymStart = `${anio}-${String(mes).padStart(2, "0")}-01`;
+    const nextMes =
+      mes === 12
+        ? `${anio + 1}-01-01`
+        : `${anio}-${String(mes + 1).padStart(2, "0")}-01`;
+
+    const presupuestos = Array.from(presupuestosStore.values()).filter(
+      (p) => p.mes === mes && p.anio === anio
+    );
+
+    return presupuestos.map((p) => {
+      const gastosCat = Array.from(store.gastos.values()).filter(
+        (g) =>
+          g.categoria_id === p.categoria_id &&
+          g.fecha >= ymStart &&
+          g.fecha < nextMes
+      );
+      const gastado = gastosCat.reduce((s, g) => s + g.total_usd, 0);
+      return {
+        ...p,
+        categoria: store.categorias.get(p.categoria_id),
+        gastado_usd: gastado,
+      };
+    });
+  },
+
+  async upsert(input: {
+    categoria_id: string;
+    mes: number;
+    anio: number;
+    monto_usd: number;
+  }) {
+    const existing = Array.from(presupuestosStore.values()).find(
+      (p) =>
+        p.categoria_id === input.categoria_id &&
+        p.mes === input.mes &&
+        p.anio === input.anio
+    );
+    if (existing) {
+      existing.monto_usd = input.monto_usd;
+      presupuestosStore.set(existing.id, existing);
+      return existing;
+    }
+    const id = uid("pre");
+    const item = {
+      id,
+      ...input,
+      created_at: new Date().toISOString(),
+    };
+    presupuestosStore.set(id, item);
+    return item;
+  },
+
+  async delete(id: string) {
+    presupuestosStore.delete(id);
+  },
+};
+
 export const mockRepository: Repository = {
   users: mockUsers,
   categorias: mockCategorias,
@@ -505,4 +578,5 @@ export const mockRepository: Repository = {
   mobiliario: mockMobiliario,
   tasaCambio: mockTasaCambio,
   facturas: mockFacturas,
+  presupuestos: mockPresupuestos,
 };

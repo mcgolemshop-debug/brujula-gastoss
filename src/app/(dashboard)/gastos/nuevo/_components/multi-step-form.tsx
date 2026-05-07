@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { gastoSchema, type GastoFormInput } from "@/lib/validations/gasto";
-import { crearGastoAction } from "../../_actions";
+import { crearGastoAction, subirFacturaAction } from "../../_actions";
 import type { Categoria, User } from "@/types/domain";
 import { StepCategoria } from "./step-categoria";
 import { StepDetalles } from "./step-detalles";
@@ -133,21 +133,40 @@ export function MultiStepForm({ categorias, currentUser, tasaActual }: Props) {
         });
         return;
       }
+
+      // Subir foto si hay
+      let fotoOk = true;
+      if (photo) {
+        const formData = new FormData();
+        formData.append("file", photo);
+        const upload = await subirFacturaAction(result.data.id, formData);
+        if (!upload.ok) {
+          fotoOk = false;
+          toast.warning("Gasto guardado, pero la foto no se subió", {
+            description: upload.error,
+          });
+        }
+      }
+
       // limpiar draft
       try {
         localStorage.removeItem(DRAFT_KEY);
       } catch {}
-      toast.success("Gasto registrado", {
-        description: `Código ${result.data.codigo} · guardado correctamente`,
-        action: {
-          label: "Otro más",
-          onClick: () => {
-            form.reset();
-            setStepIndex(0);
+
+      if (fotoOk) {
+        toast.success("Gasto registrado", {
+          description: `Código ${result.data.codigo}${photo ? " · foto subida" : ""}`,
+          action: {
+            label: "Otro más",
+            onClick: () => {
+              form.reset();
+              setPhoto(null);
+              setStepIndex(0);
+            },
           },
-        },
-      });
-      router.push("/gastos");
+        });
+      }
+      router.push(`/gastos/${result.data.id}`);
       router.refresh();
     } catch (e) {
       toast.error("Error inesperado", {
