@@ -27,8 +27,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { EmptyState } from "@/components/shared/empty-state";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { NuevoMobiliarioButton } from "./nuevo-mobiliario-button";
 import { ESTADOS_MOBILIARIO } from "@/lib/constants";
 import { cn, formatUSD } from "@/lib/utils";
 import type { EstadoMobiliario, Mobiliario } from "@/types/domain";
@@ -82,16 +82,24 @@ export function MobiliarioGrid({ items, isAdmin, tasaActual }: Props) {
   if (items.length === 0) {
     return (
       <Card className="py-4">
-        <EmptyState
-          icon={Boxes}
-          title="No hay mobiliario aún"
-          description="Agrega el primer ítem para empezar a llevar el inventario."
-          action={
-            isAdmin
-              ? { label: "Agregar mobiliario", onClick: () => {} }
-              : undefined
-          }
-        />
+        <div className="flex flex-col items-center justify-center text-center py-12 px-6">
+          <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-secondary text-muted-foreground">
+            <Boxes className="h-7 w-7" />
+          </div>
+          <h3 className="font-serif text-xl font-medium text-foreground">
+            No hay mobiliario aún
+          </h3>
+          <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
+            {isAdmin
+              ? "Agrega el primer ítem para empezar a llevar el inventario."
+              : "El admin todavía no ha registrado mobiliario."}
+          </p>
+          {isAdmin && (
+            <div className="mt-6">
+              <NuevoMobiliarioButton />
+            </div>
+          )}
+        </div>
       </Card>
     );
   }
