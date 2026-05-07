@@ -233,9 +233,15 @@ create trigger on_auth_user_created
   for each row execute function public.handle_new_user();
 
 -- Trigger: auto-generar código G-0001, G-0002 para gastos
+-- IMPORTANTE: security definer + search_path = public para que la función
+-- pueda leer TODA la tabla gastos al calcular el máximo. Sin esto, RLS
+-- limitaría la lectura a los gastos del usuario actual y empleados con
+-- 0 gastos generarían códigos duplicados.
 create or replace function public.generate_gasto_codigo()
 returns trigger
 language plpgsql
+security definer
+set search_path = public
 as $$
 declare
   next_n int;
@@ -256,9 +262,12 @@ create trigger set_gasto_codigo
   for each row execute function public.generate_gasto_codigo();
 
 -- Trigger: auto-generar código M-001, M-002 para mobiliario
+-- (Mismo patrón security definer que el de gastos.)
 create or replace function public.generate_mobiliario_codigo()
 returns trigger
 language plpgsql
+security definer
+set search_path = public
 as $$
 declare
   next_n int;
