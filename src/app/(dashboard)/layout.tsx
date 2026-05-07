@@ -2,10 +2,13 @@ import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
+import { CommandPaletteProvider } from "@/components/command-palette/command-palette-provider";
+import { RealtimeProvider } from "@/components/providers/realtime-provider";
 import { repo } from "@/lib/repositories";
 import type { Rol } from "@/types/domain";
 
 interface CurrentUser {
+  id: string;
   name: string;
   email: string;
   role: Rol;
@@ -13,6 +16,7 @@ interface CurrentUser {
 }
 
 const MOCK_USER: CurrentUser = {
+  id: "00000000-0000-0000-0000-000000000001",
   name: "Orlando Velásquez",
   email: "orlando@brujula.local",
   role: "admin",
@@ -35,6 +39,7 @@ export default async function DashboardLayout({
       redirect("/login");
     }
     user = {
+      id: current.id,
       name: current.nombre_completo,
       email: current.email,
       role: current.rol,
@@ -43,15 +48,18 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar userRole={user.role} />
-      <div className="flex-1 flex flex-col min-w-0">
-        <Topbar user={user} />
-        <main className="flex-1 overflow-x-hidden pb-20 md:pb-6">
-          {children}
-        </main>
+    <CommandPaletteProvider isAdmin={user.role === "admin"}>
+      <RealtimeProvider currentUserId={user.id} />
+      <div className="flex min-h-screen">
+        <Sidebar userRole={user.role} />
+        <div className="flex-1 flex flex-col min-w-0">
+          <Topbar user={user} />
+          <main className="flex-1 overflow-x-hidden pb-20 md:pb-6">
+            {children}
+          </main>
+        </div>
+        <MobileBottomNav userRole={user.role} />
       </div>
-      <MobileBottomNav userRole={user.role} />
-    </div>
+    </CommandPaletteProvider>
   );
 }

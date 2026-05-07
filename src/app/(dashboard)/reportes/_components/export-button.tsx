@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Download, FileSpreadsheet, FileText } from "lucide-react";
+import { Download, FileSpreadsheet, FileText, Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,13 +12,23 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import type { Gasto } from "@/types/domain";
+import { downloadPdfReport } from "./pdf-report";
 
 interface Props {
   gastos: Gasto[];
   rango: { desde: string; hasta: string };
+  tasa?: number;
+  generadoPor?: string;
 }
 
-export function ExportButton({ gastos, rango }: Props) {
+export function ExportButton({
+  gastos,
+  rango,
+  tasa = 36.5,
+  generadoPor = "Brujula Markets",
+}: Props) {
+  const [pdfLoading, setPdfLoading] = React.useState(false);
+
   function buildRows() {
     return gastos.map((g) => ({
       Codigo: g.codigo,
@@ -46,7 +56,6 @@ export function ExportButton({ gastos, rango }: Props) {
     const rows = buildRows();
     const ws = XLSX.utils.json_to_sheet(rows);
     const csv = XLSX.utils.sheet_to_csv(ws);
-    // BOM para que Excel abra UTF-8 correctamente
     const blob = new Blob(["﻿" + csv], {
       type: "text/csv;charset=utf-8;",
     });
@@ -54,9 +63,7 @@ export function ExportButton({ gastos, rango }: Props) {
       blob,
       `brujula-gastos-${rango.desde}-a-${rango.hasta}.csv`
     );
-    toast.success("CSV exportado", {
-      description: `${rows.length} gastos`,
-    });
+    toast.success("CSV exportado", { description: `${rows.length} gastos` });
   }
 
   function exportXLSX() {
@@ -64,17 +71,26 @@ export function ExportButton({ gastos, rango }: Props) {
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Gastos");
-
-    // Auto-width
     const cols = Object.keys(rows[0] ?? {}).map((k) => ({
       wch: Math.max(k.length, 14),
     }));
     ws["!cols"] = cols;
-
     XLSX.writeFile(wb, `brujula-gastos-${rango.desde}-a-${rango.hasta}.xlsx`);
-    toast.success("Excel exportado", {
-      description: `${rows.length} gastos`,
-    });
+    toast.success("Excel exportado", { description: `${rows.length} gastos` });
+  }
+
+  async function exportPDF() {
+    setPdfLoading(true);
+    try {
+      await downloadPdfReport({ gastos, rango, tasa, generadoPor });
+      toast.success("PDF generado", { description: `${gastos.length} gastos` });
+    } catch (e) {
+      toast.error("No se pudo generar el PDF", {
+        description: e instanceof Error ? e.message : "Error",
+      });
+    } finally {
+      setPdfLoading(false);
+    }
   }
 
   function triggerDownload(blob: Blob, filename: string) {
@@ -97,6 +113,14 @@ export function ExportButton({ gastos, rango }: Props) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={exportPDF} disabled={pdfLoading}>
+          {pdfLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <FileText className="h-4 w-4" />
+          )}
+          PDF con branding
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={exportXLSX}>
           <FileSpreadsheet className="h-4 w-4" />
           Excel (.xlsx)

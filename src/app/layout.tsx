@@ -34,6 +34,18 @@ export const metadata: Metadata = {
   authors: [{ name: "Orlando Velásquez" }],
   keywords: ["trading", "forex", "gastos", "oficina", "venezuela"],
   formatDetection: { telephone: false, email: false, address: false },
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "Brújula",
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.svg", type: "image/svg+xml" },
+    ],
+    apple: "/icons/icon-512.svg",
+  },
 };
 
 export const viewport: Viewport = {

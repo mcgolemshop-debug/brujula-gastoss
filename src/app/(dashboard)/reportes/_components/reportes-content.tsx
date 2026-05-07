@@ -44,7 +44,7 @@ export function ReportesContent({
     <>
       {/* Toolbar: export */}
       <div className="flex items-center justify-end">
-        <ExportButton gastos={gastos} rango={rango} />
+        <ExportButton gastos={gastos} rango={rango} tasa={tasa} />
       </div>
 
       {/* KPIs globales */}
