@@ -6,7 +6,14 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, Receipt as ReceiptIcon, Trash2 } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Pencil,
+  Receipt as ReceiptIcon,
+  Trash2,
+} from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -25,9 +32,19 @@ interface Props {
   page: number;
   pageSize: number;
   tasaActual: number;
+  currentUserId: string;
+  isAdmin: boolean;
 }
 
-export function GastosTable({ gastos, total, page, pageSize, tasaActual }: Props) {
+export function GastosTable({
+  gastos,
+  total,
+  page,
+  pageSize,
+  tasaActual,
+  currentUserId,
+  isAdmin,
+}: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
@@ -150,15 +167,43 @@ export function GastosTable({ gastos, total, page, pageSize, tasaActual }: Props
                     />
                   </td>
                   <td className="px-2 py-3">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => setToDelete(g)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                      aria-label="Eliminar"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        asChild
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-muted-foreground hover:text-foreground"
+                        aria-label="Ver detalle"
+                      >
+                        <Link href={`/gastos/${g.id}`}>
+                          <Eye className="h-3.5 w-3.5" />
+                        </Link>
+                      </Button>
+                      {(isAdmin || g.usuario_id === currentUserId) && (
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-muted-foreground hover:text-accent"
+                          aria-label="Editar"
+                        >
+                          <Link href={`/gastos/${g.id}/edit`}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Link>
+                        </Button>
+                      )}
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => setToDelete(g)}
+                          className="text-muted-foreground hover:text-destructive"
+                          aria-label="Eliminar"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </motion.tr>
               ))}
@@ -167,56 +212,78 @@ export function GastosTable({ gastos, total, page, pageSize, tasaActual }: Props
         </div>
       </Card>
 
-      {/* Mobile · tarjetas */}
+      {/* Mobile · tarjetas (toda la card es link al detalle) */}
       <Card className="md:hidden divide-y divide-border overflow-hidden">
-        {gastos.map((g, i) => (
-          <motion.div
-            key={g.id}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2, delay: Math.min(i * 0.02, 0.3) }}
-            className="p-4 hover:bg-secondary/30 transition-colors"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3 min-w-0 flex-1">
-                <PersonAvatar name={g.usuario?.nombre_completo ?? "—"} />
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium text-sm truncate">
-                    {g.descripcion}
+        {gastos.map((g, i) => {
+          const canEdit = isAdmin || g.usuario_id === currentUserId;
+          return (
+            <motion.div
+              key={g.id}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, delay: Math.min(i * 0.02, 0.3) }}
+              className="relative hover:bg-secondary/30 transition-colors"
+            >
+              <Link
+                href={`/gastos/${g.id}`}
+                className="block p-4 pr-12"
+                aria-label={`Ver detalle de ${g.codigo}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <PersonAvatar name={g.usuario?.nombre_completo ?? "—"} />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-sm truncate">
+                        {g.descripcion}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
+                        <span className="font-mono">{g.codigo}</span>
+                        <span>·</span>
+                        <span>
+                          {format(new Date(g.fecha + "T00:00:00"), "d MMM", {
+                            locale: es,
+                          })}
+                        </span>
+                        <span>·</span>
+                        <span className="truncate">{g.metodo_pago}</span>
+                      </div>
+                      <div className="mt-2">
+                        {g.categoria && (
+                          <CategoryBadge
+                            nombre={g.categoria.nombre}
+                            icono={g.categoria.icono}
+                            color={g.categoria.color}
+                            variant="soft"
+                            size="sm"
+                          />
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
-                    <span className="font-mono">{g.codigo}</span>
-                    <span>·</span>
-                    <span>
-                      {format(new Date(g.fecha + "T00:00:00"), "d MMM", {
-                        locale: es,
-                      })}
-                    </span>
-                    <span>·</span>
-                    <span className="truncate">{g.metodo_pago}</span>
-                  </div>
-                  <div className="mt-2">
-                    {g.categoria && (
-                      <CategoryBadge
-                        nombre={g.categoria.nombre}
-                        icono={g.categoria.icono}
-                        color={g.categoria.color}
-                        variant="soft"
-                        size="sm"
-                      />
-                    )}
-                  </div>
+                  <MoneyDisplay
+                    usd={g.total_usd}
+                    tasa={tasaActual}
+                    align="right"
+                    size="md"
+                  />
                 </div>
-              </div>
-              <MoneyDisplay
-                usd={g.total_usd}
-                tasa={tasaActual}
-                align="right"
-                size="md"
-              />
-            </div>
-          </motion.div>
-        ))}
+              </Link>
+              {canEdit && (
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="icon-sm"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-accent"
+                  aria-label="Editar"
+                >
+                  <Link href={`/gastos/${g.id}/edit`}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              )}
+            </motion.div>
+          );
+        })}
       </Card>
 
       {/* Pagination */}

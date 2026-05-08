@@ -38,11 +38,18 @@ export default async function GastosPage({ searchParams }: PageProps) {
     page_size: 25,
   };
 
-  const [{ items, total, page }, categorias, usuarios, tasaActual] = await Promise.all([
+  const [
+    { items, total, page },
+    categorias,
+    usuarios,
+    tasaActual,
+    currentUser,
+  ] = await Promise.all([
     repo.gastos.list(filters),
     repo.categorias.list(),
     repo.users.list(),
     repo.tasaCambio.actual(),
+    repo.users.current(),
   ]);
 
   return (
@@ -75,6 +82,8 @@ export default async function GastosPage({ searchParams }: PageProps) {
         page={page}
         pageSize={filters.page_size!}
         tasaActual={tasaActual.valor_bs_por_usd}
+        currentUserId={currentUser?.id ?? ""}
+        isAdmin={currentUser?.rol === "admin"}
       />
     </div>
   );
