@@ -872,10 +872,13 @@ const supabaseGastosBulk: BulkActionsRepository = {
 // Reembolsos
 // =====================================================================
 
+// Nota: usamos sintaxis column-based (`!beneficiario_id`) en vez de constraint-name
+// (`!reembolsos_beneficiario_id_fkey`) para evitar fallos cuando Supabase nombra
+// los constraints de forma distinta a la convención de PostgREST.
 const reembolsoJoin = `
   *,
-  beneficiario:users!reembolsos_beneficiario_id_fkey(id, nombre_completo, email, rol, cargo, avatar_url, activo, created_at),
-  gasto:gastos!reembolsos_gasto_id_fkey(id, codigo, descripcion, fecha, total_usd, total_bs, categoria_id)
+  beneficiario:users!beneficiario_id(id, nombre_completo, email, rol, cargo, avatar_url, activo, created_at),
+  gasto:gastos!gasto_id(id, codigo, descripcion, fecha, total_usd, total_bs, categoria_id)
 `;
 
 const supabaseReembolsos: ReembolsosRepository = {
@@ -958,7 +961,7 @@ const supabaseReembolsos: ReembolsosRepository = {
     const { data, error } = await sb
       .from("reembolsos")
       .select(
-        "beneficiario_id, monto_usd, monto_bs, beneficiario:users!reembolsos_beneficiario_id_fkey(nombre_completo)"
+        "beneficiario_id, monto_usd, monto_bs, beneficiario:users!beneficiario_id(nombre_completo)"
       )
       .eq("estado", "pendiente");
     checkErr(error, "reembolsos.totalesPorBeneficiario");
@@ -1032,7 +1035,7 @@ const supabasePushSubs: PushSubsRepository = {
     const { data, error } = await sb
       .from("notificaciones_push_subs")
       .select(
-        "id, usuario_id, endpoint, p256dh, auth_secret, users!notificaciones_push_subs_usuario_id_fkey!inner(rol)"
+        "id, usuario_id, endpoint, p256dh, auth_secret, users!usuario_id!inner(rol)"
       )
       .eq("users.rol", "admin");
     checkErr(error, "pushSubs.admins");

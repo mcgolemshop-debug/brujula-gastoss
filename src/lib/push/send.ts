@@ -83,7 +83,7 @@ export async function sendPushToAdmins(payload: PushPayload): Promise<number> {
   const { data, error } = await sb
     .from("notificaciones_push_subs")
     .select(
-      "id, endpoint, p256dh, auth_secret, users!notificaciones_push_subs_usuario_id_fkey!inner(rol)"
+      "id, endpoint, p256dh, auth_secret, users!usuario_id!inner(rol)"
     )
     .eq("users.rol", "admin");
   if (error || !data) return 0;
