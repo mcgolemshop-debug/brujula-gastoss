@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Wallet, Clock, CheckCircle2 } from "lucide-react";
+import { Wallet, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
 import { repo } from "@/lib/repositories";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card } from "@/components/ui/card";
@@ -10,28 +10,104 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { MoneyDisplay } from "@/components/shared/money-display";
 import { ReembolsoRow } from "./_components/reembolso-row";
 import { formatUSD, getInitials, colorFromName } from "@/lib/utils";
+import type { Reembolso } from "@/types/domain";
 
 export const metadata: Metadata = { title: "Reembolsos" };
+
+interface DataResult {
+  reembolsos: Reembolso[];
+  tasaUsdBs: number;
+  totales: Awaited<
+    ReturnType<typeof repo.reembolsos.totalesPorBeneficiario>
+  >;
+  error: string | null;
+}
+
+async function loadData(isAdmin: boolean, userId: string): Promise<DataResult> {
+  const filtros = isAdmin ? {} : { beneficiario_id: userId };
+  try {
+    const [reembolsos, tasaActual, totales] = await Promise.all([
+      repo.reembolsos.list(filtros),
+      repo.tasaCambio.actual(),
+      isAdmin
+        ? repo.reembolsos.totalesPorBeneficiario()
+        : Promise.resolve([] as Awaited<
+            ReturnType<typeof repo.reembolsos.totalesPorBeneficiario>
+          >),
+    ]);
+    return {
+      reembolsos,
+      tasaUsdBs: tasaActual.valor_bs_por_usd,
+      totales,
+      error: null,
+    };
+  } catch (e) {
+    return {
+      reembolsos: [],
+      tasaUsdBs: 0,
+      totales: [],
+      error: e instanceof Error ? e.message : "Error desconocido",
+    };
+  }
+}
 
 export default async function ReembolsosPage() {
   const user = await repo.users.current();
   if (!user) redirect("/login");
 
   const isAdmin = user.rol === "admin";
+  const data = await loadData(isAdmin, user.id);
 
-  const filtros = isAdmin ? {} : { beneficiario_id: user.id };
+  if (data.error) {
+    return (
+      <div className="container max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
+        <PageHeader
+          eyebrow="Caja"
+          title="Reembolsos"
+          description="Hubo un problema cargando esta sección."
+        />
+        <Card className="p-6 space-y-3 border-destructive/30">
+          <div className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5" />
+            <h2 className="font-medium">Error técnico</h2>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            La página no pudo cargar. Detalle del error:
+          </p>
+          <pre className="text-[11px] font-mono bg-secondary/50 border border-border rounded-md p-3 whitespace-pre-wrap break-words">
+            {data.error}
+          </pre>
+          <div className="text-xs text-muted-foreground space-y-1 pt-2">
+            <p>
+              <strong>Posibles causas:</strong>
+            </p>
+            <ul className="list-disc list-inside space-y-0.5 pl-2">
+              <li>
+                La migración SQL{" "}
+                <code className="font-mono text-[10px]">
+                  20260507000004_advanced_features.sql
+                </code>{" "}
+                no se aplicó en Supabase (la tabla{" "}
+                <code className="font-mono text-[10px]">reembolsos</code> no
+                existe).
+              </li>
+              <li>
+                Los foreign keys están con nombres distintos a los esperados.
+              </li>
+              <li>RLS bloqueando el acceso.</li>
+            </ul>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
-  const [reembolsos, tasaActual, totales] = await Promise.all([
-    repo.reembolsos.list(filtros),
-    repo.tasaCambio.actual(),
-    isAdmin
-      ? repo.reembolsos.totalesPorBeneficiario()
-      : Promise.resolve([]),
-  ]);
-
-  const pendientes = reembolsos.filter((r) => r.estado === "pendiente");
-  const pagados = reembolsos.filter((r) => r.estado === "pagado");
-  const totalPendiente = pendientes.reduce((s, r) => s + Number(r.monto_usd), 0);
+  const pendientes = data.reembolsos.filter((r) => r.estado === "pendiente");
+  const pagados = data.reembolsos.filter((r) => r.estado === "pagado");
+  const totalPendiente = pendientes.reduce(
+    (s, r) => s + Number(r.monto_usd),
+    0
+  );
 
   return (
     <div className="container max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
@@ -46,14 +122,14 @@ export default async function ReembolsosPage() {
       />
 
       {/* Resumen para admin: por beneficiario */}
-      {isAdmin && totales.length > 0 && (
+      {isAdmin && data.totales.length > 0 && (
         <Card className="p-4 md:p-5">
           <h2 className="text-sm font-medium mb-3 flex items-center gap-2">
             <Wallet className="h-4 w-4 text-accent" />
             Por beneficiario
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {totales.map((t) => {
+            {data.totales.map((t) => {
               const initials = getInitials(t.nombre);
               const bg = colorFromName(t.nombre);
               return (
@@ -76,7 +152,7 @@ export default async function ReembolsosPage() {
                   </div>
                   <MoneyDisplay
                     usd={t.total_usd}
-                    tasa={tasaActual.valor_bs_por_usd}
+                    tasa={data.tasaUsdBs}
                     align="right"
                     size="sm"
                   />
@@ -125,7 +201,7 @@ export default async function ReembolsosPage() {
                   key={r.id}
                   reembolso={r}
                   isAdmin={isAdmin}
-                  tasaActual={tasaActual.valor_bs_por_usd}
+                  tasaActual={data.tasaUsdBs}
                 />
               ))}
             </Card>
@@ -148,7 +224,7 @@ export default async function ReembolsosPage() {
                   key={r.id}
                   reembolso={r}
                   isAdmin={isAdmin}
-                  tasaActual={tasaActual.valor_bs_por_usd}
+                  tasaActual={data.tasaUsdBs}
                 />
               ))}
             </Card>

@@ -64,7 +64,8 @@ export default async function GastoDetailPage({ params }: PageProps) {
   const fecha = new Date(gasto.fecha + "T00:00:00");
   const [facturasUrls, reembolsoExistente] = await Promise.all([
     getFacturasUrls(gasto.facturas ?? []),
-    repo.reembolsos.byGastoId(gasto.id),
+    // Si la tabla reembolsos no existe (migración no aplicada), no rompemos toda la página
+    repo.reembolsos.byGastoId(gasto.id).catch(() => null),
   ]);
 
   return (
