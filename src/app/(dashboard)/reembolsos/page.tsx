@@ -14,6 +14,48 @@ import type { Reembolso } from "@/types/domain";
 
 export const metadata: Metadata = { title: "Reembolsos" };
 
+function ErrorPage({ msg }: { msg: string }) {
+  return (
+    <div className="container max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
+      <PageHeader
+        eyebrow="Caja"
+        title="Reembolsos"
+        description="Hubo un problema cargando esta sección."
+      />
+      <Card className="p-6 space-y-3 border-destructive/30">
+        <div className="flex items-center gap-2 text-destructive">
+          <AlertTriangle className="h-5 w-5" />
+          <h2 className="font-medium">Error técnico</h2>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          La página no pudo cargar. Detalle del error:
+        </p>
+        <pre className="text-[11px] font-mono bg-secondary/50 border border-border rounded-md p-3 whitespace-pre-wrap break-words">
+          {msg}
+        </pre>
+        <div className="text-xs text-muted-foreground space-y-1 pt-2">
+          <p>
+            <strong>Posibles causas:</strong>
+          </p>
+          <ul className="list-disc list-inside space-y-0.5 pl-2">
+            <li>
+              La migración SQL{" "}
+              <code className="font-mono text-[10px]">
+                20260507000004_advanced_features.sql
+              </code>{" "}
+              no se aplicó en Supabase.
+            </li>
+            <li>
+              Los foreign keys están con nombres distintos a los esperados.
+            </li>
+            <li>RLS bloqueando el acceso.</li>
+          </ul>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 interface DataResult {
   reembolsos: Reembolso[];
   tasaUsdBs: number;
@@ -52,54 +94,23 @@ async function loadData(isAdmin: boolean, userId: string): Promise<DataResult> {
 }
 
 export default async function ReembolsosPage() {
-  const user = await repo.users.current();
+  let user;
+  try {
+    user = await repo.users.current();
+  } catch (e) {
+    return (
+      <ErrorPage
+        msg={e instanceof Error ? e.message : "Error obteniendo usuario actual"}
+      />
+    );
+  }
   if (!user) redirect("/login");
 
   const isAdmin = user.rol === "admin";
   const data = await loadData(isAdmin, user.id);
 
   if (data.error) {
-    return (
-      <div className="container max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
-        <PageHeader
-          eyebrow="Caja"
-          title="Reembolsos"
-          description="Hubo un problema cargando esta sección."
-        />
-        <Card className="p-6 space-y-3 border-destructive/30">
-          <div className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-5 w-5" />
-            <h2 className="font-medium">Error técnico</h2>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            La página no pudo cargar. Detalle del error:
-          </p>
-          <pre className="text-[11px] font-mono bg-secondary/50 border border-border rounded-md p-3 whitespace-pre-wrap break-words">
-            {data.error}
-          </pre>
-          <div className="text-xs text-muted-foreground space-y-1 pt-2">
-            <p>
-              <strong>Posibles causas:</strong>
-            </p>
-            <ul className="list-disc list-inside space-y-0.5 pl-2">
-              <li>
-                La migración SQL{" "}
-                <code className="font-mono text-[10px]">
-                  20260507000004_advanced_features.sql
-                </code>{" "}
-                no se aplicó en Supabase (la tabla{" "}
-                <code className="font-mono text-[10px]">reembolsos</code> no
-                existe).
-              </li>
-              <li>
-                Los foreign keys están con nombres distintos a los esperados.
-              </li>
-              <li>RLS bloqueando el acceso.</li>
-            </ul>
-          </div>
-        </Card>
-      </div>
-    );
+    return <ErrorPage msg={data.error} />;
   }
 
   const pendientes = data.reembolsos.filter((r) => r.estado === "pendiente");
