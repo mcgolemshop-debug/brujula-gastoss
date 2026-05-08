@@ -141,6 +141,34 @@ export interface TasaCambio {
   created_at: string;
 }
 
+export type EstadoReembolso = "pendiente" | "pagado";
+
+export interface Reembolso {
+  id: string;
+  gasto_id: string;
+  beneficiario_id: string;
+  monto_usd: number;
+  monto_bs: number;
+  notas: string | null;
+  estado: EstadoReembolso;
+  fecha_pago: string | null;
+  pagado_por: string | null;
+  metodo_pago_reembolso: MetodoPago | null;
+  created_at: string;
+  updated_at: string;
+  // Joins
+  gasto?: Gasto;
+  beneficiario?: User;
+}
+
+export interface NuevoReembolsoInput {
+  gasto_id: string;
+  beneficiario_id: string;
+  monto_usd: number;
+  monto_bs: number;
+  notas?: string | null;
+}
+
 export interface Presupuesto {
   id: string;
   categoria_id: string;

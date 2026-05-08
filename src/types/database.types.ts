@@ -38,6 +38,8 @@ export interface Database {
       facturas: T;
       presupuestos: T;
       auditoria: T;
+      reembolsos: T;
+      notificaciones_push_subs: T;
     };
     Views: {
       tasa_actual: V;

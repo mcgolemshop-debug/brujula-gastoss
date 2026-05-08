@@ -7,6 +7,8 @@ import { DatosPersonalesForm } from "./_components/datos-personales-form";
 import { PasswordForm } from "./_components/password-form";
 import { StatsMes } from "./_components/stats-mes";
 import { SesionesCard } from "./_components/sesiones-card";
+import { NotifCard } from "./_components/notif-card";
+import { DosFaCard } from "./_components/dos-fa-card";
 
 export const metadata: Metadata = { title: "Mi perfil" };
 
@@ -33,16 +35,18 @@ export default async function PerfilPage() {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Columna izquierda · Avatar + datos + password */}
+        {/* Columna izquierda · Avatar + datos + password + 2FA */}
         <div className="lg:col-span-2 space-y-6">
           <AvatarUploader user={me} />
           <DatosPersonalesForm user={me} />
           <PasswordForm />
+          <DosFaCard />
         </div>
 
-        {/* Columna derecha · Stats + sesiones */}
+        {/* Columna derecha · Stats + sesiones + notif */}
         <div className="space-y-6">
           <StatsMes stats={stats} tasa={tasa.valor_bs_por_usd} />
+          <NotifCard />
           <SesionesCard ultimoSignin={stats.ultimo_signin} />
         </div>
       </div>

@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { gastoSchema, editGastoSchema } from "@/lib/validations/gasto";
 import { repo } from "@/lib/repositories";
+import { sendPushToAdmins } from "@/lib/push/send";
+import { formatUSD } from "@/lib/utils";
 import type { NuevoGastoInput } from "@/types/domain";
+
+/** Umbral en USD para notificar al admin de un gasto registrado */
+const PUSH_THRESHOLD_USD = 100;
 
 export type ActionResult<T> =
   | { ok: true; data: T }
@@ -32,6 +37,17 @@ export async function crearGastoAction(
     );
     revalidatePath("/gastos");
     revalidatePath("/dashboard");
+
+    // Push opcional al admin si el gasto supera el umbral y NO fue creado por el admin
+    if (gasto.total_usd >= PUSH_THRESHOLD_USD && user.rol !== "admin") {
+      sendPushToAdmins({
+        title: `💸 Nuevo gasto · ${formatUSD(gasto.total_usd)}`,
+        body: `${user.nombre_completo} registró: ${gasto.descripcion}`,
+        url: `/gastos/${gasto.id}`,
+        tag: `gasto-${gasto.id}`,
+      }).catch(() => {});
+    }
+
     return { ok: true, data: { id: gasto.id, codigo: gasto.codigo } };
   } catch (e) {
     return {
@@ -99,6 +115,63 @@ export async function eliminarGastoAction(
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Error al eliminar",
+    };
+  }
+}
+
+export async function eliminarGastosBulkAction(
+  ids: string[]
+): Promise<ActionResult<{ count: number }>> {
+  const user = await repo.users.current();
+  if (!user) return { ok: false, error: "No autenticado" };
+  if (user.rol !== "admin") {
+    return { ok: false, error: "Solo el admin puede eliminar gastos" };
+  }
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return { ok: false, error: "Selecciona al menos un gasto" };
+  }
+  if (ids.length > 200) {
+    return { ok: false, error: "Demasiados gastos (máx 200 por operación)" };
+  }
+  try {
+    const result = await repo.gastosBulk.deleteMany(ids);
+    revalidatePath("/gastos");
+    revalidatePath("/dashboard");
+    revalidatePath("/reportes");
+    return { ok: true, data: result };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Error al eliminar masivamente",
+    };
+  }
+}
+
+export async function recategorizarGastosBulkAction(
+  ids: string[],
+  nuevaCategoriaId: string
+): Promise<ActionResult<{ count: number }>> {
+  const user = await repo.users.current();
+  if (!user) return { ok: false, error: "No autenticado" };
+  if (user.rol !== "admin") {
+    return { ok: false, error: "Solo el admin puede recategorizar masivamente" };
+  }
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return { ok: false, error: "Selecciona al menos un gasto" };
+  }
+  if (!nuevaCategoriaId) {
+    return { ok: false, error: "Selecciona la nueva categoría" };
+  }
+  try {
+    const result = await repo.gastosBulk.recategorizarMany(ids, nuevaCategoriaId);
+    revalidatePath("/gastos");
+    revalidatePath("/dashboard");
+    revalidatePath("/reportes");
+    return { ok: true, data: result };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Error al recategorizar",
     };
   }
 }

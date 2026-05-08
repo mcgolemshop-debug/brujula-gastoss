@@ -8,6 +8,7 @@ import {
 import { repo } from "@/lib/repositories";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
+import { sendPushToUser } from "@/lib/push/send";
 import type { ActionResult } from "../gastos/_actions";
 
 const IS_MOCK = () => process.env.NEXT_PUBLIC_DATA_SOURCE === "mock";
@@ -201,6 +202,127 @@ export async function cerrarOtrasSesionesAction(): Promise<
   if (error) return { ok: false, error: error.message };
 
   return { ok: true, data: true };
+}
+
+/**
+ * Envía un push de prueba al usuario actual (verifica que su sub está activa).
+ */
+export async function enviarPushPruebaAction(): Promise<ActionResult<{ count: number }>> {
+  const me = await repo.users.current();
+  if (!me) return { ok: false, error: "No autenticado" };
+  try {
+    const count = await sendPushToUser(me.id, {
+      title: "🔔 Prueba de notificación",
+      body: "Si ves esto, las notificaciones push están funcionando.",
+      url: "/perfil",
+      tag: "test-push",
+    });
+    if (count === 0) {
+      return {
+        ok: false,
+        error: "No tienes ninguna suscripción activa en este navegador",
+      };
+    }
+    return { ok: true, data: { count } };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Error enviando push",
+    };
+  }
+}
+
+/**
+ * Inscribe el usuario actual a 2FA TOTP. Devuelve el QR + secret.
+ */
+export async function enrollMfaAction(): Promise<
+  ActionResult<{ factorId: string; qrCode: string; secret: string }>
+> {
+  if (IS_MOCK()) {
+    return { ok: false, error: "Requiere Supabase configurado" };
+  }
+  const sb = await createSupabaseServerClient();
+  const { data, error } = await sb.auth.mfa.enroll({
+    factorType: "totp",
+    friendlyName: "Brújula Markets",
+  });
+  if (error) return { ok: false, error: error.message };
+  if (!data) return { ok: false, error: "Sin datos de enroll" };
+  return {
+    ok: true,
+    data: {
+      factorId: data.id,
+      qrCode: data.totp.qr_code,
+      secret: data.totp.secret,
+    },
+  };
+}
+
+/**
+ * Verifica el código TOTP que ingresa el usuario para confirmar el 2FA.
+ */
+export async function verifyMfaAction(input: {
+  factorId: string;
+  code: string;
+}): Promise<ActionResult<true>> {
+  if (IS_MOCK()) {
+    return { ok: false, error: "Requiere Supabase configurado" };
+  }
+  if (!/^\d{6}$/.test(input.code)) {
+    return { ok: false, error: "El código debe ser 6 dígitos" };
+  }
+  const sb = await createSupabaseServerClient();
+  const { data: challengeData, error: chErr } = await sb.auth.mfa.challenge({
+    factorId: input.factorId,
+  });
+  if (chErr || !challengeData) {
+    return { ok: false, error: chErr?.message ?? "No se pudo emitir reto MFA" };
+  }
+  const { error: verErr } = await sb.auth.mfa.verify({
+    factorId: input.factorId,
+    challengeId: challengeData.id,
+    code: input.code,
+  });
+  if (verErr) return { ok: false, error: verErr.message };
+  revalidatePath("/perfil");
+  return { ok: true, data: true };
+}
+
+/**
+ * Quita el factor 2FA del usuario.
+ */
+export async function unenrollMfaAction(
+  factorId: string
+): Promise<ActionResult<true>> {
+  if (IS_MOCK()) {
+    return { ok: false, error: "Requiere Supabase configurado" };
+  }
+  const sb = await createSupabaseServerClient();
+  const { error } = await sb.auth.mfa.unenroll({ factorId });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/perfil");
+  return { ok: true, data: true };
+}
+
+/**
+ * Devuelve los factores MFA inscritos del usuario actual.
+ */
+export async function listMfaFactorsAction(): Promise<
+  ActionResult<{ factors: { id: string; status: string; friendly_name: string | null }[] }>
+> {
+  if (IS_MOCK()) {
+    return { ok: true, data: { factors: [] } };
+  }
+  const sb = await createSupabaseServerClient();
+  const { data, error } = await sb.auth.mfa.listFactors();
+  if (error) return { ok: false, error: error.message };
+  const factors =
+    data?.totp.map((f) => ({
+      id: f.id,
+      status: f.status,
+      friendly_name: f.friendly_name ?? null,
+    })) ?? [];
+  return { ok: true, data: { factors } };
 }
 
 /**

@@ -19,18 +19,25 @@ import type {
   Gasto,
   GastoFilters,
   KpiResumen,
+  MetodoPago,
   Mobiliario,
   NuevoGastoInput,
   NuevoMobiliarioInput,
+  NuevoReembolsoInput,
   PaginatedResult,
+  Reembolso,
   TasaCambio,
   User,
 } from "@/types/domain";
 import type {
+  BulkActionsRepository,
   CategoriasRepository,
   FacturasRepository,
   GastosRepository,
   MobiliarioRepository,
+  PushSubsRepository,
+  ReembolsoFilters,
+  ReembolsosRepository,
   Repository,
   TasaCambioRepository,
   UsersRepository,
@@ -835,6 +842,212 @@ const supabasePresupuestos = {
 };
 
 // =====================================================================
+// Bulk actions sobre gastos
+// =====================================================================
+
+const supabaseGastosBulk: BulkActionsRepository = {
+  async deleteMany(ids) {
+    if (ids.length === 0) return { count: 0 };
+    const sb = await client();
+    const { error, count } = await sb
+      .from("gastos")
+      .delete({ count: "exact" })
+      .in("id", ids);
+    checkErr(error, "gastos.deleteMany");
+    return { count: count ?? 0 };
+  },
+  async recategorizarMany(ids, nuevaCategoriaId) {
+    if (ids.length === 0) return { count: 0 };
+    const sb = await client();
+    const { error, count } = await sb
+      .from("gastos")
+      .update({ categoria_id: nuevaCategoriaId }, { count: "exact" })
+      .in("id", ids);
+    checkErr(error, "gastos.recategorizarMany");
+    return { count: count ?? 0 };
+  },
+};
+
+// =====================================================================
+// Reembolsos
+// =====================================================================
+
+const reembolsoJoin = `
+  *,
+  beneficiario:users!reembolsos_beneficiario_id_fkey(id, nombre_completo, email, rol, cargo, avatar_url, activo, created_at),
+  gasto:gastos!reembolsos_gasto_id_fkey(id, codigo, descripcion, fecha, total_usd, total_bs, categoria_id)
+`;
+
+const supabaseReembolsos: ReembolsosRepository = {
+  async list(filters: ReembolsoFilters = {}) {
+    const sb = await client();
+    let q = sb
+      .from("reembolsos")
+      .select(reembolsoJoin)
+      .order("created_at", { ascending: false });
+    if (filters.estado) q = q.eq("estado", filters.estado);
+    if (filters.beneficiario_id)
+      q = q.eq("beneficiario_id", filters.beneficiario_id);
+    const { data, error } = await q;
+    checkErr(error, "reembolsos.list");
+    return asArray<Reembolso>(data);
+  },
+  async byId(id) {
+    const sb = await client();
+    const { data, error } = await sb
+      .from("reembolsos")
+      .select(reembolsoJoin)
+      .eq("id", id)
+      .maybeSingle();
+    checkErr(error, "reembolsos.byId");
+    return asMaybe<Reembolso>(data);
+  },
+  async byGastoId(gastoId) {
+    const sb = await client();
+    const { data, error } = await sb
+      .from("reembolsos")
+      .select(reembolsoJoin)
+      .eq("gasto_id", gastoId)
+      .maybeSingle();
+    checkErr(error, "reembolsos.byGastoId");
+    return asMaybe<Reembolso>(data);
+  },
+  async create(input: NuevoReembolsoInput) {
+    const sb = await client();
+    const { data, error } = await sb
+      .from("reembolsos")
+      .insert({
+        gasto_id: input.gasto_id,
+        beneficiario_id: input.beneficiario_id,
+        monto_usd: input.monto_usd,
+        monto_bs: input.monto_bs,
+        notas: input.notas ?? null,
+        estado: "pendiente",
+      })
+      .select(reembolsoJoin)
+      .single();
+    checkErr(error, "reembolsos.create");
+    return asOne<Reembolso>(data);
+  },
+  async marcarPagado(id, metodo_pago: MetodoPago, fecha_pago) {
+    const sb = await client();
+    const {
+      data: { user: authUser },
+    } = await sb.auth.getUser();
+    const { data, error } = await sb
+      .from("reembolsos")
+      .update({
+        estado: "pagado",
+        fecha_pago,
+        pagado_por: authUser?.id ?? null,
+        metodo_pago_reembolso: metodo_pago,
+      })
+      .eq("id", id)
+      .select(reembolsoJoin)
+      .single();
+    checkErr(error, "reembolsos.marcarPagado");
+    return asOne<Reembolso>(data);
+  },
+  async delete(id) {
+    const sb = await client();
+    const { error } = await sb.from("reembolsos").delete().eq("id", id);
+    checkErr(error, "reembolsos.delete");
+  },
+  async totalesPorBeneficiario() {
+    const sb = await client();
+    const { data, error } = await sb
+      .from("reembolsos")
+      .select(
+        "beneficiario_id, monto_usd, monto_bs, beneficiario:users!reembolsos_beneficiario_id_fkey(nombre_completo)"
+      )
+      .eq("estado", "pendiente");
+    checkErr(error, "reembolsos.totalesPorBeneficiario");
+    type Row = {
+      beneficiario_id: string;
+      monto_usd: number;
+      monto_bs: number;
+      beneficiario?: { nombre_completo: string } | null;
+    };
+    const rows = asArray<Row>(data);
+    const map = new Map<
+      string,
+      { nombre: string; total_usd: number; total_bs: number; cuenta: number }
+    >();
+    for (const r of rows) {
+      const ex = map.get(r.beneficiario_id) ?? {
+        nombre: r.beneficiario?.nombre_completo ?? "—",
+        total_usd: 0,
+        total_bs: 0,
+        cuenta: 0,
+      };
+      ex.total_usd += Number(r.monto_usd);
+      ex.total_bs += Number(r.monto_bs);
+      ex.cuenta += 1;
+      map.set(r.beneficiario_id, ex);
+    }
+    return Array.from(map.entries()).map(([beneficiario_id, v]) => ({
+      beneficiario_id,
+      ...v,
+    }));
+  },
+};
+
+// =====================================================================
+// Push subs
+// =====================================================================
+
+const supabasePushSubs: PushSubsRepository = {
+  async subscribe(input) {
+    const sb = await client();
+    const { error } = await sb.from("notificaciones_push_subs").upsert(
+      {
+        usuario_id: input.usuario_id,
+        endpoint: input.endpoint,
+        p256dh: input.p256dh,
+        auth_secret: input.auth_secret,
+        user_agent: input.user_agent ?? null,
+      },
+      { onConflict: "endpoint" }
+    );
+    checkErr(error, "pushSubs.subscribe");
+  },
+  async unsubscribe(endpoint) {
+    const sb = await client();
+    const { error } = await sb
+      .from("notificaciones_push_subs")
+      .delete()
+      .eq("endpoint", endpoint);
+    checkErr(error, "pushSubs.unsubscribe");
+  },
+  async all() {
+    const sb = await client();
+    const { data, error } = await sb
+      .from("notificaciones_push_subs")
+      .select("id, usuario_id, endpoint, p256dh, auth_secret");
+    checkErr(error, "pushSubs.all");
+    return asArray(data);
+  },
+  async admins() {
+    const sb = await client();
+    const { data, error } = await sb
+      .from("notificaciones_push_subs")
+      .select(
+        "id, usuario_id, endpoint, p256dh, auth_secret, users!notificaciones_push_subs_usuario_id_fkey!inner(rol)"
+      )
+      .eq("users.rol", "admin");
+    checkErr(error, "pushSubs.admins");
+    type Row = {
+      id: string;
+      usuario_id: string;
+      endpoint: string;
+      p256dh: string;
+      auth_secret: string;
+    };
+    return asArray<Row>(data);
+  },
+};
+
+// =====================================================================
 // Repository (export)
 // =====================================================================
 
@@ -842,8 +1055,11 @@ export const supabaseRepository: Repository = {
   users: supabaseUsers,
   categorias: supabaseCategorias,
   gastos: supabaseGastos,
+  gastosBulk: supabaseGastosBulk,
   mobiliario: supabaseMobiliario,
   tasaCambio: supabaseTasa,
   facturas: supabaseFacturas,
   presupuestos: supabasePresupuestos,
+  reembolsos: supabaseReembolsos,
+  pushSubs: supabasePushSubs,
 };

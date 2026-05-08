@@ -8,6 +8,7 @@ import {
   Users,
   Settings,
   ScrollText,
+  Wallet,
   Plus,
   type LucideIcon,
 } from "lucide-react";
@@ -27,6 +28,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Comida", href: "/comida", icon: Sandwich },
   { label: "Inventario", href: "/inventario", icon: Boxes, mobile: true },
   { label: "Reportes", href: "/reportes", icon: ChartLine, mobile: true },
+  { label: "Reembolsos", href: "/reembolsos", icon: Wallet },
   { label: "Presupuestos", href: "/presupuestos", icon: Target, adminOnly: true },
   { label: "Equipo", href: "/equipo", icon: Users, adminOnly: true },
   { label: "Configuración", href: "/configuracion", icon: Settings },

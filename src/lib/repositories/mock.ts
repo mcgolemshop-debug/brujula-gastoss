@@ -15,9 +15,12 @@ import type {
   GastoFilters,
   KpiResumen,
   Mobiliario,
+  MetodoPago,
   NuevoGastoInput,
   NuevoMobiliarioInput,
+  NuevoReembolsoInput,
   PaginatedResult,
+  Reembolso,
   TasaCambio,
   User,
 } from "@/types/domain";
@@ -29,10 +32,14 @@ import {
   DEFAULT_TASA_CAMBIO,
 } from "@/lib/constants";
 import type {
+  BulkActionsRepository,
   CategoriasRepository,
   FacturasRepository,
   GastosRepository,
   MobiliarioRepository,
+  PushSubsRepository,
+  ReembolsoFilters,
+  ReembolsosRepository,
   Repository,
   TasaCambioRepository,
   UsersRepository,
@@ -45,6 +52,7 @@ class MockStore {
   gastos = new Map<string, Gasto>();
   mobiliario = new Map<string, Mobiliario>();
   tasaCambio: TasaCambio[] = [];
+  reembolsos = new Map<string, Reembolso>();
   /** UUID del usuario "actual" (Orlando por defecto) — Fase 2 sin Auth real */
   currentUserId: string = "00000000-0000-0000-0000-000000000001";
   initialized = false;
@@ -694,12 +702,146 @@ export const mockPresupuestos = {
   },
 };
 
+// ===== Reembolsos =====
+function joinReembolso(r: Reembolso): Reembolso {
+  return {
+    ...r,
+    gasto: store.gastos.get(r.gasto_id),
+    beneficiario: store.users.get(r.beneficiario_id),
+  };
+}
+
+export const mockReembolsos: ReembolsosRepository = {
+  async list(filters: ReembolsoFilters = {}) {
+    let items = Array.from(store.reembolsos.values()).map(joinReembolso);
+    if (filters.estado) items = items.filter((r) => r.estado === filters.estado);
+    if (filters.beneficiario_id)
+      items = items.filter((r) => r.beneficiario_id === filters.beneficiario_id);
+    return items.sort((a, b) => b.created_at.localeCompare(a.created_at));
+  },
+  async byId(id) {
+    const r = store.reembolsos.get(id);
+    return r ? joinReembolso(r) : null;
+  },
+  async byGastoId(gastoId) {
+    const r = Array.from(store.reembolsos.values()).find(
+      (x) => x.gasto_id === gastoId
+    );
+    return r ? joinReembolso(r) : null;
+  },
+  async create(input: NuevoReembolsoInput) {
+    const id = uid("reb");
+    const now = new Date().toISOString();
+    const r: Reembolso = {
+      id,
+      gasto_id: input.gasto_id,
+      beneficiario_id: input.beneficiario_id,
+      monto_usd: input.monto_usd,
+      monto_bs: input.monto_bs,
+      notas: input.notas ?? null,
+      estado: "pendiente",
+      fecha_pago: null,
+      pagado_por: null,
+      metodo_pago_reembolso: null,
+      created_at: now,
+      updated_at: now,
+    };
+    store.reembolsos.set(id, r);
+    return joinReembolso(r);
+  },
+  async marcarPagado(id, metodo_pago: MetodoPago, fecha_pago) {
+    const existing = store.reembolsos.get(id);
+    if (!existing) throw new Error("Reembolso no encontrado");
+    const merged: Reembolso = {
+      ...existing,
+      estado: "pagado",
+      fecha_pago,
+      pagado_por: store.currentUserId,
+      metodo_pago_reembolso: metodo_pago,
+      updated_at: new Date().toISOString(),
+    };
+    store.reembolsos.set(id, merged);
+    return joinReembolso(merged);
+  },
+  async delete(id) {
+    store.reembolsos.delete(id);
+  },
+  async totalesPorBeneficiario() {
+    const map = new Map<
+      string,
+      { total_usd: number; total_bs: number; cuenta: number }
+    >();
+    Array.from(store.reembolsos.values())
+      .filter((r) => r.estado === "pendiente")
+      .forEach((r) => {
+        const ex = map.get(r.beneficiario_id) ?? {
+          total_usd: 0,
+          total_bs: 0,
+          cuenta: 0,
+        };
+        ex.total_usd += r.monto_usd;
+        ex.total_bs += r.monto_bs;
+        ex.cuenta += 1;
+        map.set(r.beneficiario_id, ex);
+      });
+    return Array.from(map.entries()).map(([beneficiario_id, v]) => ({
+      beneficiario_id,
+      nombre: store.users.get(beneficiario_id)?.nombre_completo ?? "—",
+      ...v,
+    }));
+  },
+};
+
+// ===== Bulk actions =====
+export const mockGastosBulk: BulkActionsRepository = {
+  async deleteMany(ids) {
+    let count = 0;
+    for (const id of ids) {
+      if (store.gastos.delete(id)) count += 1;
+    }
+    return { count };
+  },
+  async recategorizarMany(ids, nuevaCategoriaId) {
+    let count = 0;
+    for (const id of ids) {
+      const g = store.gastos.get(id);
+      if (!g) continue;
+      store.gastos.set(id, {
+        ...g,
+        categoria_id: nuevaCategoriaId,
+        updated_at: new Date().toISOString(),
+      });
+      count += 1;
+    }
+    return { count };
+  },
+};
+
+// ===== Push subs (no-op en mock, no persiste) =====
+export const mockPushSubs: PushSubsRepository = {
+  async subscribe() {
+    /* no-op */
+  },
+  async unsubscribe() {
+    /* no-op */
+  },
+  async all() {
+    return [];
+  },
+  async admins() {
+    return [];
+  },
+};
+
 export const mockRepository: Repository = {
   users: mockUsers,
   categorias: mockCategorias,
   gastos: mockGastos,
+  gastosBulk: mockGastosBulk,
   mobiliario: mockMobiliario,
   tasaCambio: mockTasaCambio,
   facturas: mockFacturas,
   presupuestos: mockPresupuestos,
+  reembolsos: mockReembolsos,
+  pushSubs: mockPushSubs,
 };

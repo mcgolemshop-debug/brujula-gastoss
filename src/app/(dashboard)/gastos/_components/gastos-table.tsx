@@ -17,13 +17,15 @@ import {
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { CategoryBadge } from "@/components/shared/category-badge";
 import { MoneyDisplay } from "@/components/shared/money-display";
 import { EmptyState } from "@/components/shared/empty-state";
 import { cn, getInitials, colorFromName } from "@/lib/utils";
-import type { Gasto } from "@/types/domain";
+import type { Categoria, Gasto } from "@/types/domain";
 import { eliminarGastoAction } from "../_actions";
+import { BulkToolbar } from "./bulk-toolbar";
 import { toast } from "sonner";
 
 interface Props {
@@ -34,6 +36,7 @@ interface Props {
   tasaActual: number;
   currentUserId: string;
   isAdmin: boolean;
+  categorias: Categoria[];
 }
 
 export function GastosTable({
@@ -44,14 +47,35 @@ export function GastosTable({
   tasaActual,
   currentUserId,
   isAdmin,
+  categorias,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
   const [toDelete, setToDelete] = React.useState<Gasto | null>(null);
   const [deleting, setDeleting] = React.useState(false);
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  // Reset selección al cambiar de página o filtros
+  React.useEffect(() => {
+    setSelectedIds([]);
+  }, [sp]);
+
+  const allSelected = gastos.length > 0 && selectedIds.length === gastos.length;
+  const someSelected = selectedIds.length > 0 && !allSelected;
+
+  function toggleAll(checked: boolean) {
+    if (checked) setSelectedIds(gastos.map((g) => g.id));
+    else setSelectedIds([]);
+  }
+
+  function toggleOne(id: string, checked: boolean) {
+    setSelectedIds((prev) =>
+      checked ? [...prev, id] : prev.filter((x) => x !== id)
+    );
+  }
 
   function setPage(p: number) {
     const params = new URLSearchParams(sp.toString());
@@ -96,6 +120,15 @@ export function GastosTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border bg-secondary/30">
+                {isAdmin && (
+                  <th className="px-3 py-3 w-8">
+                    <Checkbox
+                      checked={allSelected || (someSelected && "indeterminate")}
+                      onCheckedChange={(c) => toggleAll(!!c)}
+                      aria-label="Seleccionar todos"
+                    />
+                  </th>
+                )}
                 <th className="px-4 py-3 font-medium">Cód.</th>
                 <th className="px-3 py-3 font-medium">Fecha</th>
                 <th className="px-3 py-3 font-medium">Persona</th>
@@ -107,106 +140,121 @@ export function GastosTable({
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {gastos.map((g, i) => (
-                <motion.tr
-                  key={g.id}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2, delay: Math.min(i * 0.02, 0.3) }}
-                  className="group hover:bg-secondary/30 transition-colors"
-                >
-                  <td className="px-4 py-3">
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {g.codigo}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 whitespace-nowrap">
-                    <div className="text-xs">
-                      <div>
-                        {format(new Date(g.fecha + "T00:00:00"), "d MMM", {
-                          locale: es,
-                        })}
+              {gastos.map((g, i) => {
+                const isSelected = selectedIds.includes(g.id);
+                return (
+                  <motion.tr
+                    key={g.id}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2, delay: Math.min(i * 0.02, 0.3) }}
+                    className={cn(
+                      "group hover:bg-secondary/30 transition-colors",
+                      isSelected && "bg-accent/10"
+                    )}
+                  >
+                    {isAdmin && (
+                      <td className="px-3 py-3">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={(c) => toggleOne(g.id, !!c)}
+                          aria-label={`Seleccionar ${g.codigo}`}
+                        />
+                      </td>
+                    )}
+                    <td className="px-4 py-3">
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {g.codigo}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <div className="text-xs">
+                        <div>
+                          {format(new Date(g.fecha + "T00:00:00"), "d MMM", {
+                            locale: es,
+                          })}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground font-mono">
+                          {g.hora}
+                        </div>
                       </div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <PersonCell name={g.usuario?.nombre_completo ?? "—"} />
+                    </td>
+                    <td className="px-3 py-3">
+                      {g.categoria && (
+                        <CategoryBadge
+                          nombre={g.categoria.nombre}
+                          icono={g.categoria.icono}
+                          color={g.categoria.color}
+                          variant="soft"
+                          size="sm"
+                        />
+                      )}
+                    </td>
+                    <td className="px-3 py-3 max-w-xs">
+                      <div className="truncate font-medium">{g.descripcion}</div>
                       <div className="text-[10px] text-muted-foreground font-mono">
-                        {g.hora}
+                        {g.cantidad} {g.unidad}
+                        {g.items > 1 && ` · ${g.items} ítems`}
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3">
-                    <PersonCell name={g.usuario?.nombre_completo ?? "—"} />
-                  </td>
-                  <td className="px-3 py-3">
-                    {g.categoria && (
-                      <CategoryBadge
-                        nombre={g.categoria.nombre}
-                        icono={g.categoria.icono}
-                        color={g.categoria.color}
-                        variant="soft"
+                    </td>
+                    <td className="px-3 py-3">
+                      <span className="text-xs text-muted-foreground">
+                        {g.metodo_pago}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3">
+                      <MoneyDisplay
+                        usd={g.total_usd}
+                        tasa={tasaActual}
+                        align="right"
                         size="sm"
                       />
-                    )}
-                  </td>
-                  <td className="px-3 py-3 max-w-xs">
-                    <div className="truncate font-medium">{g.descripcion}</div>
-                    <div className="text-[10px] text-muted-foreground font-mono">
-                      {g.cantidad} {g.unidad}
-                      {g.items > 1 && ` · ${g.items} ítems`}
-                    </div>
-                  </td>
-                  <td className="px-3 py-3">
-                    <span className="text-xs text-muted-foreground">
-                      {g.metodo_pago}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3">
-                    <MoneyDisplay
-                      usd={g.total_usd}
-                      tasa={tasaActual}
-                      align="right"
-                      size="sm"
-                    />
-                  </td>
-                  <td className="px-2 py-3">
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        asChild
-                        variant="ghost"
-                        size="icon-sm"
-                        className="text-muted-foreground hover:text-foreground"
-                        aria-label="Ver detalle"
-                      >
-                        <Link href={`/gastos/${g.id}`}>
-                          <Eye className="h-3.5 w-3.5" />
-                        </Link>
-                      </Button>
-                      {(isAdmin || g.usuario_id === currentUserId) && (
+                    </td>
+                    <td className="px-2 py-3">
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button
                           asChild
                           variant="ghost"
                           size="icon-sm"
-                          className="text-muted-foreground hover:text-accent"
-                          aria-label="Editar"
+                          className="text-muted-foreground hover:text-foreground"
+                          aria-label="Ver detalle"
                         >
-                          <Link href={`/gastos/${g.id}/edit`}>
-                            <Pencil className="h-3.5 w-3.5" />
+                          <Link href={`/gastos/${g.id}`}>
+                            <Eye className="h-3.5 w-3.5" />
                           </Link>
                         </Button>
-                      )}
-                      {isAdmin && (
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => setToDelete(g)}
-                          className="text-muted-foreground hover:text-destructive"
-                          aria-label="Eliminar"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                    </div>
-                  </td>
-                </motion.tr>
-              ))}
+                        {(isAdmin || g.usuario_id === currentUserId) && (
+                          <Button
+                            asChild
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-muted-foreground hover:text-accent"
+                            aria-label="Editar"
+                          >
+                            <Link href={`/gastos/${g.id}/edit`}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Link>
+                          </Button>
+                        )}
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => setToDelete(g)}
+                            className="text-muted-foreground hover:text-destructive"
+                            aria-label="Eliminar"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </motion.tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -216,17 +264,30 @@ export function GastosTable({
       <Card className="md:hidden divide-y divide-border overflow-hidden">
         {gastos.map((g, i) => {
           const canEdit = isAdmin || g.usuario_id === currentUserId;
+          const isSelected = selectedIds.includes(g.id);
           return (
             <motion.div
               key={g.id}
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2, delay: Math.min(i * 0.02, 0.3) }}
-              className="relative hover:bg-secondary/30 transition-colors"
+              className={cn(
+                "relative hover:bg-secondary/30 transition-colors",
+                isSelected && "bg-accent/10"
+              )}
             >
+              {isAdmin && (
+                <div className="absolute left-3 top-4 z-10">
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={(c) => toggleOne(g.id, !!c)}
+                    aria-label={`Seleccionar ${g.codigo}`}
+                  />
+                </div>
+              )}
               <Link
                 href={`/gastos/${g.id}`}
-                className="block p-4 pr-12"
+                className={cn("block p-4 pr-12", isAdmin && "pl-10")}
                 aria-label={`Ver detalle de ${g.codigo}`}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -333,6 +394,14 @@ export function GastosTable({
         loading={deleting}
         onConfirm={handleDelete}
       />
+
+      {isAdmin && (
+        <BulkToolbar
+          selectedIds={selectedIds}
+          categorias={categorias}
+          onClear={() => setSelectedIds([])}
+        />
+      )}
     </>
   );
 }

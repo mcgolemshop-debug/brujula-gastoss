@@ -84,6 +84,7 @@ export default async function GastosPage({ searchParams }: PageProps) {
         tasaActual={tasaActual.valor_bs_por_usd}
         currentUserId={currentUser?.id ?? ""}
         isAdmin={currentUser?.rol === "admin"}
+        categorias={categorias}
       />
     </div>
   );

@@ -25,6 +25,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { getInitials, colorFromName, formatUSD, formatBs } from "@/lib/utils";
 import { DeleteGastoButton } from "./_components/delete-button";
+import { ReembolsoSection } from "./_components/reembolso-section";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 interface PageProps {
@@ -61,7 +62,10 @@ export default async function GastoDetailPage({ params }: PageProps) {
   const canDelete = isAdmin;
 
   const fecha = new Date(gasto.fecha + "T00:00:00");
-  const facturasUrls = await getFacturasUrls(gasto.facturas ?? []);
+  const [facturasUrls, reembolsoExistente] = await Promise.all([
+    getFacturasUrls(gasto.facturas ?? []),
+    repo.reembolsos.byGastoId(gasto.id),
+  ]);
 
   return (
     <div className="container max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
@@ -85,6 +89,17 @@ export default async function GastoDetailPage({ params }: PageProps) {
           {canDelete && <DeleteGastoButton id={gasto.id} codigo={gasto.codigo} />}
         </div>
       </div>
+
+      {/* Reembolso */}
+      <ReembolsoSection
+        gastoId={gasto.id}
+        totalUsd={gasto.total_usd}
+        totalBs={gasto.total_bs}
+        beneficiarioId={gasto.usuario_id}
+        beneficiarioNombre={gasto.usuario?.nombre_completo ?? "—"}
+        reembolsoExistente={reembolsoExistente}
+        canManage={canEdit}
+      />
 
       {/* Header */}
       <Card className="overflow-hidden">

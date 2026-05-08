@@ -15,8 +15,10 @@ import type {
   Mobiliario,
   NuevoGastoInput,
   NuevoMobiliarioInput,
+  NuevoReembolsoInput,
   PaginatedResult,
   Presupuesto,
+  Reembolso,
   StatsPersonales,
   TasaCambio,
   User,
@@ -118,12 +120,82 @@ export interface PresupuestosRepository {
   delete(id: string): Promise<void>;
 }
 
+export interface ReembolsoFilters {
+  estado?: "pendiente" | "pagado";
+  beneficiario_id?: string;
+}
+
+export interface ReembolsosRepository {
+  list(filters?: ReembolsoFilters): Promise<Reembolso[]>;
+  byId(id: string): Promise<Reembolso | null>;
+  byGastoId(gastoId: string): Promise<Reembolso | null>;
+  create(input: NuevoReembolsoInput): Promise<Reembolso>;
+  marcarPagado(
+    id: string,
+    metodo_pago: import("@/types/domain").MetodoPago,
+    fecha_pago: string
+  ): Promise<Reembolso>;
+  delete(id: string): Promise<void>;
+  /** Total pendiente por beneficiario, agregado */
+  totalesPorBeneficiario(): Promise<
+    {
+      beneficiario_id: string;
+      nombre: string;
+      total_usd: number;
+      total_bs: number;
+      cuenta: number;
+    }[]
+  >;
+}
+
+export interface BulkActionsRepository {
+  deleteMany(ids: string[]): Promise<{ count: number }>;
+  recategorizarMany(
+    ids: string[],
+    nuevaCategoriaId: string
+  ): Promise<{ count: number }>;
+}
+
+export interface PushSubsRepository {
+  subscribe(input: {
+    usuario_id: string;
+    endpoint: string;
+    p256dh: string;
+    auth_secret: string;
+    user_agent?: string;
+  }): Promise<void>;
+  unsubscribe(endpoint: string): Promise<void>;
+  /** Lista todas las subs (para enviar push masivo) */
+  all(): Promise<
+    {
+      id: string;
+      usuario_id: string;
+      endpoint: string;
+      p256dh: string;
+      auth_secret: string;
+    }[]
+  >;
+  /** Lista subs de admins (para alertar al admin) */
+  admins(): Promise<
+    {
+      id: string;
+      usuario_id: string;
+      endpoint: string;
+      p256dh: string;
+      auth_secret: string;
+    }[]
+  >;
+}
+
 export interface Repository {
   users: UsersRepository;
   categorias: CategoriasRepository;
   gastos: GastosRepository;
+  gastosBulk: BulkActionsRepository;
   mobiliario: MobiliarioRepository;
   tasaCambio: TasaCambioRepository;
   facturas: FacturasRepository;
   presupuestos: PresupuestosRepository;
+  reembolsos: ReembolsosRepository;
+  pushSubs: PushSubsRepository;
 }
