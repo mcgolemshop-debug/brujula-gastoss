@@ -8,6 +8,8 @@ import { es } from "date-fns/locale";
 import {
   KeyRound,
   MoreVertical,
+  Pencil,
+  Plus,
   ShieldCheck,
   ShieldOff,
   UserCheck,
@@ -40,6 +42,7 @@ import {
   enviarRecuperacionAction,
   toggleUsuarioActivoAction,
 } from "../_actions";
+import { MiembroDialog } from "./miembro-dialog";
 
 interface UserStats {
   userId: string;
@@ -63,6 +66,20 @@ export function EquipoTable({ usuarios, stats, currentUserId, tasa }: Props) {
     user: User;
     nuevoRol: "admin" | "empleado";
   } | null>(null);
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [editingMiembro, setEditingMiembro] = React.useState<User | null>(
+    null
+  );
+
+  function openCreate() {
+    setEditingMiembro(null);
+    setDialogOpen(true);
+  }
+
+  function openEdit(u: User) {
+    setEditingMiembro(u);
+    setDialogOpen(true);
+  }
 
   const statsByUser = new Map(stats.map((s) => [s.userId, s]));
   const totalCompras = stats.reduce((s, x) => s + x.compras, 0);
@@ -127,6 +144,19 @@ export function EquipoTable({ usuarios, stats, currentUserId, tasa }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* Toolbar · agregar miembro */}
+      <div className="flex items-center justify-end">
+        <Button
+          variant="accent"
+          size="sm"
+          onClick={openCreate}
+          className="gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Agregar miembro
+        </Button>
+      </div>
+
       {/* Resumen */}
       <Card>
         <CardContent className="p-5">
@@ -257,23 +287,30 @@ export function EquipoTable({ usuarios, stats, currentUserId, tasa }: Props) {
                         </span>
                       </div>
 
-                      {!isMe && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              disabled={busy}
-                              aria-label="Más acciones"
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-56">
-                            {u.rol === "empleado" ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            disabled={busy}
+                            aria-label="Más acciones"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                          <DropdownMenuItem onClick={() => openEdit(u)}>
+                            <Pencil className="h-4 w-4" />
+                            Editar miembro
+                          </DropdownMenuItem>
+                          {!isMe &&
+                            (u.rol === "empleado" ? (
                               <DropdownMenuItem
                                 onClick={() =>
-                                  setConfirmRol({ user: u, nuevoRol: "admin" })
+                                  setConfirmRol({
+                                    user: u,
+                                    nuevoRol: "admin",
+                                  })
                                 }
                               >
                                 <ShieldCheck className="h-4 w-4" />
@@ -291,17 +328,16 @@ export function EquipoTable({ usuarios, stats, currentUserId, tasa }: Props) {
                                 <ShieldOff className="h-4 w-4" />
                                 Degradar a empleado
                               </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => handleResetPassword(u)}
-                            >
-                              <KeyRound className="h-4 w-4" />
-                              Enviar recuperación
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+                            ))}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => handleResetPassword(u)}
+                          >
+                            <KeyRound className="h-4 w-4" />
+                            Enviar recuperación
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </CardContent>
@@ -329,6 +365,13 @@ export function EquipoTable({ usuarios, stats, currentUserId, tasa }: Props) {
           confirmRol?.nuevoRol === "admin" ? "Promover" : "Degradar"
         }
         onConfirm={handleCambiarRol}
+      />
+
+      <MiembroDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        miembro={editingMiembro}
+        currentUserId={currentUserId}
       />
     </div>
   );
