@@ -12,6 +12,7 @@ import {
   ImageIcon,
   MapPin,
   Package,
+  Pencil,
   Receipt,
 } from "lucide-react";
 import { repo } from "@/lib/repositories";
@@ -56,6 +57,7 @@ export default async function GastoDetailPage({ params }: PageProps) {
 
   const isAdmin = currentUser?.rol === "admin";
   const isOwner = currentUser?.id === gasto.usuario_id;
+  const canEdit = isAdmin || isOwner;
   const canDelete = isAdmin;
 
   const fecha = new Date(gasto.fecha + "T00:00:00");
@@ -71,7 +73,17 @@ export default async function GastoDetailPage({ params }: PageProps) {
             Todos los gastos
           </Link>
         </Button>
-        {canDelete && <DeleteGastoButton id={gasto.id} codigo={gasto.codigo} />}
+        <div className="flex items-center gap-2">
+          {canEdit && (
+            <Button asChild variant="outline" size="sm" className="gap-2">
+              <Link href={`/gastos/${gasto.id}/edit`}>
+                <Pencil className="h-3.5 w-3.5" />
+                Editar
+              </Link>
+            </Button>
+          )}
+          {canDelete && <DeleteGastoButton id={gasto.id} codigo={gasto.codigo} />}
+        </div>
       </div>
 
       {/* Header */}

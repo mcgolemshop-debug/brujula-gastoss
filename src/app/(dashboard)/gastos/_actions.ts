@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { gastoSchema } from "@/lib/validations/gasto";
+import { gastoSchema, editGastoSchema } from "@/lib/validations/gasto";
 import { repo } from "@/lib/repositories";
 import type { NuevoGastoInput } from "@/types/domain";
 
@@ -105,16 +105,39 @@ export async function eliminarGastoAction(
 
 export async function actualizarGastoAction(
   id: string,
-  input: Partial<NuevoGastoInput>
+  input: Omit<NuevoGastoInput, "usuario_id">
 ): Promise<ActionResult<true>> {
   const user = await repo.users.current();
   if (!user) return { ok: false, error: "No autenticado" };
 
+  // Validación con schema específico de edición (sin usuario_id)
+  const parsed = editGastoSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: "Datos inválidos",
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  // Verificar que existe + permisos (RLS lo hace pero damos error claro)
+  const existing = await repo.gastos.byId(id);
+  if (!existing) {
+    return { ok: false, error: "Gasto no encontrado" };
+  }
+  if (user.rol !== "admin" && existing.usuario_id !== user.id) {
+    return {
+      ok: false,
+      error: "Solo puedes editar tus propios gastos",
+    };
+  }
+
   try {
-    await repo.gastos.update(id, input);
+    await repo.gastos.update(id, parsed.data as Partial<NuevoGastoInput>);
     revalidatePath("/gastos");
     revalidatePath(`/gastos/${id}`);
     revalidatePath("/dashboard");
+    revalidatePath("/reportes");
     return { ok: true, data: true };
   } catch (e) {
     return {

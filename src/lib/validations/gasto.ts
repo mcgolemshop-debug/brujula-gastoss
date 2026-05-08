@@ -76,3 +76,10 @@ export const gastoStepSchemas = {
     observaciones: true,
   }),
 } as const;
+
+/**
+ * Schema para edición de gasto: omite usuario_id (no se cambia el autor)
+ * y la tasa de cambio queda inmutable. El código G-XXXX tampoco se edita.
+ */
+export const editGastoSchema = gastoSchema.omit({ usuario_id: true });
+export type EditGastoFormInput = z.infer<typeof editGastoSchema>;
