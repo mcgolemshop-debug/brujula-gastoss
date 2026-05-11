@@ -83,3 +83,63 @@ export const gastoStepSchemas = {
  */
 export const editGastoSchema = gastoSchema.omit({ usuario_id: true });
 export type EditGastoFormInput = z.infer<typeof editGastoSchema>;
+
+/**
+ * === Lote de gastos ===
+ * Registro de varios gastos a la vez compartiendo meta-datos.
+ *
+ * Header: campos comunes (fecha, hora, usuario, método de pago, lugar, número factura).
+ * Rows: campos únicos por gasto (descripción, cantidad, unidad, items, precio, categoría…).
+ */
+
+export const loteHeaderSchema = gastoSchema.pick({
+  fecha: true,
+  hora: true,
+  usuario_id: true,
+  metodo_pago: true,
+  lugar_compra: true,
+  numero_factura: true,
+});
+
+export const loteRowSchema = gastoSchema.pick({
+  categoria_id: true,
+  descripcion: true,
+  cantidad: true,
+  unidad: true,
+  items: true,
+  precio_unitario_usd: true,
+  observaciones: true,
+  va_a_inventario: true,
+  mobiliario_id: true,
+});
+
+export const loteGastosSchema = z
+  .object({
+    header: loteHeaderSchema,
+    rows: z
+      .array(loteRowSchema)
+      .min(1, "Agrega al menos un gasto al lote")
+      .max(20, "Máximo 20 gastos por lote"),
+  })
+  .superRefine((val, ctx) => {
+    // Warning suave si dos filas son iguales (misma categoría + descripción).
+    // No bloquea el submit; el usuario decide.
+    const seen = new Map<string, number>();
+    val.rows.forEach((r, i) => {
+      const key = `${r.categoria_id}::${r.descripcion.toLowerCase().trim()}`;
+      const prev = seen.get(key);
+      if (prev !== undefined) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["rows", i, "descripcion"],
+          message: `Posible duplicado de la fila #${prev + 1}`,
+        });
+      } else {
+        seen.set(key, i);
+      }
+    });
+  });
+
+export type LoteHeaderInput = z.infer<typeof loteHeaderSchema>;
+export type LoteRowInput = z.infer<typeof loteRowSchema>;
+export type LoteGastosInput = z.infer<typeof loteGastosSchema>;

@@ -1,7 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { gastoSchema, editGastoSchema } from "@/lib/validations/gasto";
+import {
+  gastoSchema,
+  editGastoSchema,
+  loteGastosSchema,
+  type LoteGastosInput,
+} from "@/lib/validations/gasto";
 import { repo } from "@/lib/repositories";
 import { sendPushToAdmins } from "@/lib/push/send";
 import { formatUSD } from "@/lib/utils";
@@ -216,6 +221,152 @@ export async function actualizarGastoAction(
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Error al actualizar",
+    };
+  }
+}
+
+/**
+ * Registra varios gastos a la vez compartiendo header (fecha, hora, método,
+ * lugar, número de factura). Cada fila genera un gasto independiente con su
+ * propio código G-XXXX, categoría, descripción y precios.
+ *
+ * IMPORTANTE: inserts secuenciales. El trigger generate_gasto_codigo lee
+ * max(codigo)+1 sin LOCK → paralelizar causa unique_violation (23505) bajo
+ * carga concurrente. Con N≤20 el costo (~2s) es aceptable.
+ *
+ * Política de errores: todo o nada. Si una fila falla, eliminamos las ya
+ * creadas (rollback best-effort) y retornamos el error.
+ *
+ * La foto compartida (si se adjuntó) se sube a cada gasto del lote tras la
+ * creación exitosa. Si una subida falla, NO hace rollback (foto no-crítica).
+ *
+ * Push: si Σ total_usd ≥ $100 y el usuario no es admin, se envía UNA sola
+ * push agregada al admin.
+ */
+export async function crearLoteGastosAction(
+  input: LoteGastosInput,
+  fotoFormData?: FormData
+): Promise<
+  ActionResult<{
+    creados: { id: string; codigo: string }[];
+    total_usd: number;
+  }>
+> {
+  const parsed = loteGastosSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: "Datos inválidos",
+      fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
+    };
+  }
+
+  const user = await repo.users.current();
+  if (!user) return { ok: false, error: "No autenticado" };
+
+  const { header, rows } = parsed.data;
+
+  // RLS: registrar gastos a nombre de otra persona requiere admin.
+  if (header.usuario_id !== user.id && user.rol !== "admin") {
+    return {
+      ok: false,
+      error: "Solo el admin puede registrar gastos a nombre de otros",
+    };
+  }
+
+  const creados: { id: string; codigo: string; total_usd: number }[] = [];
+
+  try {
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const gastoInput: NuevoGastoInput = {
+        fecha: header.fecha,
+        hora: header.hora,
+        usuario_id: header.usuario_id,
+        metodo_pago: header.metodo_pago,
+        lugar_compra: header.lugar_compra ?? null,
+        numero_factura: header.numero_factura ?? null,
+        categoria_id: row.categoria_id,
+        descripcion: row.descripcion,
+        cantidad: row.cantidad,
+        unidad: row.unidad,
+        items: row.items,
+        precio_unitario_usd: row.precio_unitario_usd,
+        observaciones: row.observaciones ?? null,
+        va_a_inventario: row.va_a_inventario ?? false,
+        mobiliario_id: row.mobiliario_id ?? null,
+      };
+
+      try {
+        const gasto = await repo.gastos.create(gastoInput, user.id);
+        creados.push({
+          id: gasto.id,
+          codigo: gasto.codigo,
+          total_usd: gasto.total_usd,
+        });
+      } catch (rowErr) {
+        // Rollback best-effort de los creados anteriores
+        for (const c of creados.reverse()) {
+          await repo.gastos.delete(c.id).catch(() => {
+            /* ignoramos errores del rollback, ya reportamos el original */
+          });
+        }
+        return {
+          ok: false,
+          error: `Lote cancelado en fila ${i + 1}: ${
+            rowErr instanceof Error ? rowErr.message : "Error desconocido"
+          }`,
+        };
+      }
+    }
+
+    const totalUsd = creados.reduce((s, c) => s + Number(c.total_usd), 0);
+
+    // Subir foto compartida a cada gasto (no-crítico: warning si falla)
+    if (fotoFormData) {
+      const file = fotoFormData.get("file");
+      if (file instanceof File && file.size > 0) {
+        for (const c of creados) {
+          try {
+            await repo.facturas.upload(c.id, file, file.name, user.id);
+          } catch {
+            /* Foto fallida no aborta el lote */
+          }
+        }
+      }
+    }
+
+    // Push agregada al admin si supera umbral y el usuario no es admin
+    if (totalUsd >= 100 && user.rol !== "admin") {
+      sendPushToAdmins({
+        title: `💸 Lote de gastos · ${formatUSD(totalUsd)}`,
+        body: `${user.nombre_completo} registró ${creados.length} gastos${
+          header.lugar_compra ? ` en ${header.lugar_compra}` : ""
+        }`,
+        url: `/gastos?desde=${header.fecha}&hasta=${header.fecha}`,
+        tag: `lote-${user.id}-${Date.now()}`,
+      }).catch(() => {});
+    }
+
+    revalidatePath("/gastos");
+    revalidatePath("/dashboard");
+    revalidatePath("/reportes");
+
+    return {
+      ok: true,
+      data: {
+        creados: creados.map((c) => ({ id: c.id, codigo: c.codigo })),
+        total_usd: totalUsd,
+      },
+    };
+  } catch (e) {
+    // Catch defensivo por si algo escapa del loop
+    for (const c of creados.reverse()) {
+      await repo.gastos.delete(c.id).catch(() => {});
+    }
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Error al crear lote de gastos",
     };
   }
 }

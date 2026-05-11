@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { gastoSchema } from "@/lib/validations/gasto";
+import { gastoSchema, loteGastosSchema } from "@/lib/validations/gasto";
 import { mobiliarioSchema } from "@/lib/validations/mobiliario";
 import { loginSchema } from "@/lib/validations/login";
 import { tasaCambioSchema } from "@/lib/validations/tasa";
@@ -224,5 +224,117 @@ describe("presupuestoSchema", () => {
     expect(
       presupuestoSchema.safeParse({ ...baseValid, mes: 12 }).success
     ).toBe(true);
+  });
+});
+
+describe("loteGastosSchema", () => {
+  const CAT_A = "550e8400-e29b-41d4-a716-446655440001";
+  const CAT_B = "550e8400-e29b-41d4-a716-446655440002";
+  const USER = "550e8400-e29b-41d4-a716-446655440000";
+
+  const baseHeader = {
+    fecha: "2026-05-07",
+    hora: "14:30",
+    usuario_id: USER,
+    metodo_pago: "Efectivo $" as const,
+  };
+
+  const baseRow = {
+    categoria_id: CAT_A,
+    descripcion: "Café molido",
+    cantidad: 1,
+    unidad: "Kg" as const,
+    items: 1,
+    precio_unitario_usd: 12,
+  };
+
+  it("acepta lote válido con una fila", () => {
+    const r = loteGastosSchema.safeParse({
+      header: baseHeader,
+      rows: [baseRow],
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("acepta lote válido con varias filas distintas", () => {
+    const r = loteGastosSchema.safeParse({
+      header: baseHeader,
+      rows: [
+        baseRow,
+        { ...baseRow, descripcion: "Leche entera", categoria_id: CAT_B },
+        { ...baseRow, descripcion: "Galletas", categoria_id: CAT_A },
+      ],
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("rechaza lote sin filas", () => {
+    const r = loteGastosSchema.safeParse({
+      header: baseHeader,
+      rows: [],
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("rechaza lote con más de 20 filas", () => {
+    const rows = Array.from({ length: 21 }, (_, i) => ({
+      ...baseRow,
+      descripcion: `Item ${i}`,
+    }));
+    const r = loteGastosSchema.safeParse({ header: baseHeader, rows });
+    expect(r.success).toBe(false);
+  });
+
+  it("rechaza header con fecha mal formada", () => {
+    const r = loteGastosSchema.safeParse({
+      header: { ...baseHeader, fecha: "07/05/2026" },
+      rows: [baseRow],
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("marca duplicados de descripción+categoría con warning soft", () => {
+    const r = loteGastosSchema.safeParse({
+      header: baseHeader,
+      rows: [
+        baseRow,
+        { ...baseRow, descripcion: "Café Molido" }, // misma categoría, mismo nombre (case-insensitive)
+      ],
+    });
+    // El superRefine emite issue → safeParse devuelve success:false
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      const dupIssue = r.error.issues.find(
+        (i) =>
+          i.path.join(".") === "rows.1.descripcion" &&
+          i.message.includes("duplicado")
+      );
+      expect(dupIssue).toBeDefined();
+    }
+  });
+
+  it("NO marca duplicado cuando la categoría difiere", () => {
+    const r = loteGastosSchema.safeParse({
+      header: baseHeader,
+      rows: [
+        baseRow,
+        { ...baseRow, categoria_id: CAT_B }, // mismo nombre, distinta categoría
+      ],
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("propaga errores con path indexado por fila", () => {
+    const r = loteGastosSchema.safeParse({
+      header: baseHeader,
+      rows: [baseRow, { ...baseRow, precio_unitario_usd: -5 }],
+    });
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      const issue = r.error.issues.find(
+        (i) => i.path.join(".") === "rows.1.precio_unitario_usd"
+      );
+      expect(issue).toBeDefined();
+    }
   });
 });
