@@ -15,6 +15,7 @@ import {
 } from "@/lib/validations/gasto";
 import { crearLoteGastosAction } from "../../_actions";
 import type { Categoria, User } from "@/types/domain";
+import type { Moneda } from "@/components/shared/money-input";
 import { LoteHeader } from "./lote-header";
 import { LoteRow } from "./lote-row";
 import { LoteResumen } from "./lote-resumen";
@@ -50,6 +51,7 @@ export function LoteForm({
 }: Props) {
   const router = useRouter();
   const [foto, setFoto] = React.useState<File | null>(null);
+  const [moneda, setMoneda] = React.useState<Moneda>("Bs");
   const [submitting, setSubmitting] = React.useState(false);
   const [progress, setProgress] = React.useState<{ done: number; total: number } | null>(
     null
@@ -180,6 +182,9 @@ export function LoteForm({
           isAdmin={isAdmin}
           foto={foto}
           onFotoChange={setFoto}
+          moneda={moneda}
+          onMonedaChange={setMoneda}
+          tasa={tasaActual}
         />
 
         <div className="space-y-2">
@@ -217,6 +222,8 @@ export function LoteForm({
                   categorias={categorias}
                   canRemove={canRemoveRow}
                   onRemove={() => remove(i)}
+                  moneda={moneda}
+                  tasa={tasaActual}
                 />
               </motion.div>
             ))}

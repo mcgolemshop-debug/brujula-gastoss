@@ -2,7 +2,14 @@
 
 import * as React from "react";
 import { useFormContext } from "react-hook-form";
-import { Calendar, Clock, Receipt, Store, User as UserIcon } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  Coins,
+  Receipt,
+  Store,
+  User as UserIcon,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -20,7 +27,9 @@ import {
 } from "@/components/ui/form";
 import { Card } from "@/components/ui/card";
 import { ImageUpload } from "@/components/shared/image-upload";
+import type { Moneda } from "@/components/shared/money-input";
 import { METODOS_PAGO } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 import type { User } from "@/types/domain";
 import type { LoteGastosInput } from "@/lib/validations/gasto";
 
@@ -29,9 +38,20 @@ interface Props {
   isAdmin: boolean;
   foto: File | null;
   onFotoChange: (file: File | null) => void;
+  moneda: Moneda;
+  onMonedaChange: (m: Moneda) => void;
+  tasa: number;
 }
 
-export function LoteHeader({ usuarios, isAdmin, foto, onFotoChange }: Props) {
+export function LoteHeader({
+  usuarios,
+  isAdmin,
+  foto,
+  onFotoChange,
+  moneda,
+  onMonedaChange,
+  tasa,
+}: Props) {
   const { control } = useFormContext<LoteGastosInput>();
 
   return (
@@ -186,6 +206,48 @@ export function LoteHeader({ usuarios, isAdmin, foto, onFotoChange }: Props) {
             </FormItem>
           )}
         />
+      </div>
+
+      <div>
+        <label className="text-sm font-medium mb-1.5 flex items-center gap-1.5">
+          <Coins className="h-3.5 w-3.5" />
+          Moneda de los precios
+          <span className="font-normal text-muted-foreground text-[10px]">
+            aplica a todas las filas del lote
+          </span>
+        </label>
+        <div
+          className="inline-flex rounded-md border border-border bg-secondary/30 p-0.5"
+          role="tablist"
+          aria-label="Moneda de los precios del lote"
+        >
+          {(["Bs", "USD"] as const).map((m) => {
+            const active = moneda === m;
+            return (
+              <button
+                key={m}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => onMonedaChange(m)}
+                disabled={!Number.isFinite(tasa) || tasa <= 0}
+                className={cn(
+                  "px-4 h-9 rounded text-xs font-semibold font-mono tracking-wider transition-all",
+                  active
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {m === "USD" ? "$ USD" : "Bs"}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-[10px] text-muted-foreground font-mono mt-1">
+          {tasa > 0
+            ? `Conversión con tasa actual Bs ${tasa.toFixed(2)} / 1 USD`
+            : "Sin tasa actual — solo USD disponible"}
+        </p>
       </div>
 
       <div>

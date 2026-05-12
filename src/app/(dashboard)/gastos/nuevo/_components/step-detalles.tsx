@@ -5,6 +5,7 @@ import { useFormContext } from "react-hook-form";
 import { Calculator } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { NumericInput } from "@/components/shared/numeric-input";
+import { MoneyInput } from "@/components/shared/money-input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -140,25 +141,17 @@ export function StepDetalles({ tasa }: { tasa: number }) {
         name="precio_unitario_usd"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Precio unitario (USD)</FormLabel>
+            <FormLabel>Precio unitario</FormLabel>
             <FormControl>
-              <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground font-mono">
-                  $
-                </span>
-                <NumericInput
-                  variant="decimal"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  className="pl-8 h-12 font-mono text-lg"
-                  value={field.value}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  name={field.name}
-                  ref={field.ref}
-                />
-              </div>
+              <MoneyInput
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                name={field.name}
+                tasa={tasa}
+                defaultMoneda="Bs"
+                placeholder="0.00"
+              />
             </FormControl>
             <FormMessage />
           </FormItem>

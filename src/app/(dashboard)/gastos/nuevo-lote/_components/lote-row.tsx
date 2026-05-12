@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { NumericInput } from "@/components/shared/numeric-input";
+import { MoneyInput, type Moneda } from "@/components/shared/money-input";
 import {
   Select,
   SelectContent,
@@ -34,9 +35,18 @@ interface Props {
   categorias: Categoria[];
   canRemove: boolean;
   onRemove: () => void;
+  moneda: Moneda;
+  tasa: number;
 }
 
-export function LoteRow({ index, categorias, canRemove, onRemove }: Props) {
+export function LoteRow({
+  index,
+  categorias,
+  canRemove,
+  onRemove,
+  moneda,
+  tasa,
+}: Props) {
   const { control, watch, formState } = useFormContext<LoteGastosInput>();
   const row = watch(`rows.${index}`);
   const cantidad = Number(row?.cantidad) || 0;
@@ -176,8 +186,8 @@ export function LoteRow({ index, categorias, canRemove, onRemove }: Props) {
               />
             </div>
 
-            {/* Cantidad · unidad · items · precio */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {/* Cantidad · unidad · items */}
+            <div className="grid grid-cols-3 gap-3">
               <FormField
                 control={control}
                 name={`rows.${index}.cantidad`}
@@ -250,36 +260,30 @@ export function LoteRow({ index, categorias, canRemove, onRemove }: Props) {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={control}
-                name={`rows.${index}.precio_unitario_usd`}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Precio (USD)</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-sm">
-                          $
-                        </span>
-                        <NumericInput
-                          variant="decimal"
-                          step="0.01"
-                          min="0"
-                          placeholder="0.00"
-                          className="pl-7 font-mono"
-                          value={field.value}
-                          onChange={field.onChange}
-                          onBlur={field.onBlur}
-                          name={field.name}
-                          ref={field.ref}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
+
+            {/* Precio unitario · moneda controlada por el header */}
+            <FormField
+              control={control}
+              name={`rows.${index}.precio_unitario_usd`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Precio unitario</FormLabel>
+                  <FormControl>
+                    <MoneyInput
+                      value={field.value}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                      name={field.name}
+                      tasa={tasa}
+                      moneda={moneda}
+                      placeholder="0.00"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {/* Observaciones */}
             <FormField
