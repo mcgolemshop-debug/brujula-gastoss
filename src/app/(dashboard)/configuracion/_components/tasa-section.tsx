@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { format, parseISO, formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { ArrowRightLeft, History, Loader2, Save } from "lucide-react";
+import { ArrowRightLeft, History, Loader2, RefreshCw, Save } from "lucide-react";
 import { toast } from "sonner";
 import {
   Card,
@@ -14,7 +14,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NumericInput } from "@/components/shared/numeric-input";
 import {
@@ -25,7 +24,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { actualizarTasaAction } from "../_actions";
+import {
+  actualizarTasaAction,
+  sincronizarTasaBcvAction,
+} from "../_actions";
 import type { TasaCambio } from "@/types/domain";
 
 const FUENTES = ["BCV", "Paralelo", "Binance P2P", "Manual", "Otro"];
@@ -41,6 +43,7 @@ export function TasaSection({ actual, historico, isAdmin }: Props) {
   const [valor, setValor] = React.useState(actual.valor_bs_por_usd);
   const [fuente, setFuente] = React.useState(actual.fuente);
   const [loading, setLoading] = React.useState(false);
+  const [syncing, setSyncing] = React.useState(false);
 
   const cambiada = valor !== actual.valor_bs_por_usd || fuente !== actual.fuente;
 
@@ -60,6 +63,32 @@ export function TasaSection({ actual, historico, isAdmin }: Props) {
       description: `1 USD = Bs ${valor.toFixed(2)} · fuente: ${fuente}`,
     });
     router.refresh();
+  }
+
+  async function handleSync() {
+    if (syncing) return;
+    setSyncing(true);
+    const result = await sincronizarTasaBcvAction();
+    setSyncing(false);
+    if (!result.ok) {
+      toast.error("No se pudo sincronizar con BCV", {
+        description: result.error,
+        duration: 8000,
+      });
+      return;
+    }
+    if (result.data.skipped) {
+      toast.info("Tasa ya está actualizada", {
+        description: `${result.data.fuente} · ${result.data.reason}`,
+      });
+    } else {
+      toast.success("Tasa sincronizada con BCV", {
+        description: `1 USD = Bs ${result.data.valor.toFixed(2)} · ${result.data.fuente}`,
+      });
+      setValor(result.data.valor);
+      setFuente(result.data.fuente);
+      router.refresh();
+    }
   }
 
   return (
@@ -99,6 +128,25 @@ export function TasaSection({ actual, historico, isAdmin }: Props) {
                 : "—"}
             </p>
           </div>
+          {isAdmin && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleSync}
+              disabled={syncing}
+              className="gap-1.5"
+              aria-label="Sincronizar tasa con BCV"
+            >
+              {syncing ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              <span className="hidden sm:inline">Sincronizar con BCV</span>
+              <span className="sm:hidden">BCV</span>
+            </Button>
+          )}
         </div>
 
         {/* Form actualización */}

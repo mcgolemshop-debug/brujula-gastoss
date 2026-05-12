@@ -38,10 +38,14 @@ export async function GET(request: Request) {
       ?.valor_bs_por_usd ?? null;
 
   // Fetch externa
-  const result = await fetchTasaActual();
+  const { result, attempts } = await fetchTasaActual();
   if (!result) {
     return NextResponse.json(
-      { ok: false, error: "No se pudo obtener tasa de ninguna fuente" },
+      {
+        ok: false,
+        error: "No se pudo obtener tasa de ninguna fuente",
+        attempts,
+      },
       { status: 502 }
     );
   }
@@ -57,6 +61,8 @@ export async function GET(request: Request) {
       reason: "Diferencia <0.5% — no se inserta",
       tasaActual,
       tasaNueva: result.valor,
+      fuente: result.fuente,
+      attempts,
     });
   }
 
@@ -96,5 +102,6 @@ export async function GET(request: Request) {
     tasaNueva: result.valor,
     fuente: result.fuente,
     pushSent,
+    attempts,
   });
 }
