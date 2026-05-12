@@ -32,6 +32,23 @@ import type { TasaCambio } from "@/types/domain";
 
 const FUENTES = ["BCV", "Paralelo", "Binance P2P", "Manual", "Otro"];
 
+/**
+ * Mapea una fuente persistida (cualquier string) a uno de los 5 valores
+ * canónicos del Select. Necesario porque las APIs externas devuelven
+ * "BCV (DolarApi)", "BCV (PyDolarVE)" o "BCV (Criptoya)" — el Select solo
+ * conoce los nombres cortos. NO afecta lo que se guarda en DB: solo decide
+ * qué opción preseleccionar en el form de edición manual.
+ */
+function normalizarFuenteSelect(raw: string | null | undefined): string {
+  if (!raw) return "BCV";
+  const lower = raw.toLowerCase();
+  if (lower.startsWith("bcv")) return "BCV";
+  if (lower.includes("paralelo")) return "Paralelo";
+  if (lower.includes("binance")) return "Binance P2P";
+  if (lower.includes("manual")) return "Manual";
+  return "Otro";
+}
+
 interface Props {
   actual: TasaCambio;
   historico: TasaCambio[];
@@ -41,11 +58,15 @@ interface Props {
 export function TasaSection({ actual, historico, isAdmin }: Props) {
   const router = useRouter();
   const [valor, setValor] = React.useState(actual.valor_bs_por_usd);
-  const [fuente, setFuente] = React.useState(actual.fuente);
+  const [fuente, setFuente] = React.useState(
+    normalizarFuenteSelect(actual.fuente)
+  );
   const [loading, setLoading] = React.useState(false);
   const [syncing, setSyncing] = React.useState(false);
 
-  const cambiada = valor !== actual.valor_bs_por_usd || fuente !== actual.fuente;
+  const cambiada =
+    valor !== actual.valor_bs_por_usd ||
+    fuente !== normalizarFuenteSelect(actual.fuente);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -86,7 +107,7 @@ export function TasaSection({ actual, historico, isAdmin }: Props) {
         description: `1 USD = Bs ${result.data.valor.toFixed(2)} · ${result.data.fuente}`,
       });
       setValor(result.data.valor);
-      setFuente(result.data.fuente);
+      setFuente(normalizarFuenteSelect(result.data.fuente));
       router.refresh();
     }
   }
