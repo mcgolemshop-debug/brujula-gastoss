@@ -276,8 +276,17 @@ describe("loteGastosSchema", () => {
     expect(r.success).toBe(false);
   });
 
-  it("rechaza lote con más de 20 filas", () => {
-    const rows = Array.from({ length: 21 }, (_, i) => ({
+  it("acepta lote grande (50 filas)", () => {
+    const rows = Array.from({ length: 50 }, (_, i) => ({
+      ...baseRow,
+      descripcion: `Item ${i}`,
+    }));
+    const r = loteGastosSchema.safeParse({ header: baseHeader, rows });
+    expect(r.success).toBe(true);
+  });
+
+  it("rechaza lote con más de 999 filas (tope defensivo)", () => {
+    const rows = Array.from({ length: 1000 }, (_, i) => ({
       ...baseRow,
       descripcion: `Item ${i}`,
     }));

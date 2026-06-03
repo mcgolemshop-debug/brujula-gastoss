@@ -168,8 +168,10 @@ export function LoteForm({
   }
 
   const rowsCount = fields.length;
-  const canAddMore = rowsCount < 20;
+  const canAddMore = rowsCount < 999;
   const canRemoveRow = rowsCount > 1;
+  // Aviso suave si el lote se vuelve grande (serverless function timeout aprox)
+  const muyGrande = rowsCount > 50;
 
   return (
     <FormProvider {...form}>
@@ -192,7 +194,7 @@ export function LoteForm({
             <h2 className="font-serif text-lg font-medium tracking-tight">
               Gastos del lote
               <span className="ml-2 text-xs text-muted-foreground font-sans font-normal">
-                {rowsCount} / 20
+                {rowsCount} fila{rowsCount === 1 ? "" : "s"}
               </span>
             </h2>
             <Button
@@ -207,6 +209,14 @@ export function LoteForm({
               Reiniciar
             </Button>
           </div>
+
+          {muyGrande && (
+            <div className="text-[11px] text-amber-700 dark:text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-md px-3 py-2">
+              Lote grande ({rowsCount} filas). El guardado puede tardar varios
+              segundos. Si llega a fallar por tiempo, considera dividirlo en
+              2 lotes.
+            </div>
+          )}
 
           <AnimatePresence initial={false}>
             {fields.map((field, i) => (
@@ -240,11 +250,6 @@ export function LoteForm({
               <Plus className="h-4 w-4" />
               Agregar otro gasto
             </Button>
-          )}
-          {!canAddMore && (
-            <p className="text-xs text-muted-foreground text-center py-2">
-              Máximo 20 gastos por lote. Si necesitas más, registra otro lote.
-            </p>
           )}
         </div>
 

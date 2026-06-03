@@ -119,7 +119,9 @@ export const loteGastosSchema = z
     rows: z
       .array(loteRowSchema)
       .min(1, "Agrega al menos un gasto al lote")
-      .max(20, "Máximo 20 gastos por lote"),
+      // Tope alto defensivo. En la práctica el lote se limita por el
+      // timeout del serverless function (ver crearLoteGastosAction).
+      .max(999, "Máximo 999 gastos por lote"),
   })
   .superRefine((val, ctx) => {
     // Warning suave si dos filas son iguales (misma categoría + descripción).
