@@ -40,6 +40,7 @@ export interface Database {
       auditoria: T;
       reembolsos: T;
       notificaciones_push_subs: T;
+      pagos_nomina: T;
     };
     Views: {
       tasa_actual: V;

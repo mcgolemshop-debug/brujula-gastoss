@@ -4,6 +4,7 @@ import { mobiliarioSchema } from "@/lib/validations/mobiliario";
 import { loginSchema } from "@/lib/validations/login";
 import { tasaCambioSchema } from "@/lib/validations/tasa";
 import { presupuestoSchema } from "@/lib/validations/presupuesto";
+import { salarioSchema, pagoNominaSchema } from "@/lib/validations/nomina";
 
 // UUID v4 válido para tests (Zod 4 rechaza el nil UUID)
 const VALID_UUID = "550e8400-e29b-41d4-a716-446655440000";
@@ -345,5 +346,103 @@ describe("loteGastosSchema", () => {
       );
       expect(issue).toBeDefined();
     }
+  });
+});
+
+describe("salarioSchema", () => {
+  const EMP = "550e8400-e29b-41d4-a716-446655440000";
+
+  it("acepta salario válido", () => {
+    const r = salarioSchema.safeParse({
+      empleado_id: EMP,
+      salario_mensual_usd: 400,
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("acepta salario 0 (frontera)", () => {
+    const r = salarioSchema.safeParse({
+      empleado_id: EMP,
+      salario_mensual_usd: 0,
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("rechaza salario negativo", () => {
+    const r = salarioSchema.safeParse({
+      empleado_id: EMP,
+      salario_mensual_usd: -100,
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("rechaza empleado_id no-uuid", () => {
+    const r = salarioSchema.safeParse({
+      empleado_id: "abc",
+      salario_mensual_usd: 400,
+    });
+    expect(r.success).toBe(false);
+  });
+});
+
+describe("pagoNominaSchema", () => {
+  const EMP = "550e8400-e29b-41d4-a716-446655440000";
+  const base = {
+    empleado_id: EMP,
+    semana_inicio: "2026-05-04",
+    semana_fin: "2026-05-10",
+    salario_base_usd: 100,
+    metodo_pago: "Efectivo Bs" as const,
+  };
+
+  it("acepta pago válido sin extras", () => {
+    const r = pagoNominaSchema.safeParse(base);
+    expect(r.success).toBe(true);
+    if (r.success) {
+      // defaults aplicados
+      expect(r.data.bonos_usd).toBe(0);
+      expect(r.data.deducciones_usd).toBe(0);
+    }
+  });
+
+  it("acepta pago con bonos y deducciones válidas", () => {
+    const r = pagoNominaSchema.safeParse({
+      ...base,
+      bonos_usd: 20,
+      deducciones_usd: 30,
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("rechaza deducciones mayores a base + bonos", () => {
+    const r = pagoNominaSchema.safeParse({
+      ...base,
+      salario_base_usd: 100,
+      bonos_usd: 10,
+      deducciones_usd: 200,
+    });
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      const issue = r.error.issues.find(
+        (i) => i.path.join(".") === "deducciones_usd"
+      );
+      expect(issue).toBeDefined();
+    }
+  });
+
+  it("rechaza fecha mal formada", () => {
+    const r = pagoNominaSchema.safeParse({
+      ...base,
+      semana_inicio: "04/05/2026",
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("rechaza método de pago inválido", () => {
+    const r = pagoNominaSchema.safeParse({
+      ...base,
+      metodo_pago: "Cheque",
+    });
+    expect(r.success).toBe(false);
   });
 });

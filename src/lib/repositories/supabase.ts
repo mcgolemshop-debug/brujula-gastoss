@@ -23,7 +23,9 @@ import type {
   Mobiliario,
   NuevoGastoInput,
   NuevoMobiliarioInput,
+  NuevoPagoNominaInput,
   NuevoReembolsoInput,
+  PagoNomina,
   PaginatedResult,
   Reembolso,
   TasaCambio,
@@ -35,6 +37,8 @@ import type {
   FacturasRepository,
   GastosRepository,
   MobiliarioRepository,
+  NominaFilters,
+  NominasRepository,
   PushSubsRepository,
   ReembolsoFilters,
   ReembolsosRepository,
@@ -1051,6 +1055,86 @@ const supabasePushSubs: PushSubsRepository = {
 };
 
 // =====================================================================
+// Nómina
+// =====================================================================
+
+const nominaJoin = `
+  *,
+  empleado:users!empleado_id(id, nombre_completo, email, rol, cargo, avatar_url, activo, created_at, salario_mensual_usd)
+`;
+
+const supabaseNominas: NominasRepository = {
+  async setSalario(empleadoId, salarioMensualUsd) {
+    const sb = await client();
+    const { error } = await sb
+      .from("users")
+      .update({ salario_mensual_usd: salarioMensualUsd })
+      .eq("id", empleadoId);
+    checkErr(error, "nominas.setSalario");
+  },
+  async create(input: NuevoPagoNominaInput, registradoPor) {
+    const sb = await client();
+    const { data, error } = await sb
+      .from("pagos_nomina")
+      .insert({
+        empleado_id: input.empleado_id,
+        gasto_id: input.gasto_id ?? null,
+        semana_inicio: input.semana_inicio,
+        semana_fin: input.semana_fin,
+        salario_base_usd: input.salario_base_usd,
+        bonos_usd: input.bonos_usd,
+        deducciones_usd: input.deducciones_usd,
+        tasa_cambio: input.tasa_cambio,
+        metodo_pago: input.metodo_pago,
+        notas: input.notas ?? null,
+        registrado_por: registradoPor,
+      })
+      .select(nominaJoin)
+      .single();
+    checkErr(error, "nominas.create");
+    return asOne<PagoNomina>(data);
+  },
+  async list(filters: NominaFilters = {}) {
+    const sb = await client();
+    let q = sb
+      .from("pagos_nomina")
+      .select(nominaJoin)
+      .order("created_at", { ascending: false });
+    if (filters.empleado_id) q = q.eq("empleado_id", filters.empleado_id);
+    if (filters.desde) q = q.gte("semana_inicio", filters.desde);
+    if (filters.hasta) q = q.lte("semana_inicio", filters.hasta);
+    const { data, error } = await q;
+    checkErr(error, "nominas.list");
+    return asArray<PagoNomina>(data);
+  },
+  async byId(id) {
+    const sb = await client();
+    const { data, error } = await sb
+      .from("pagos_nomina")
+      .select(nominaJoin)
+      .eq("id", id)
+      .maybeSingle();
+    checkErr(error, "nominas.byId");
+    return asMaybe<PagoNomina>(data);
+  },
+  async pagosDeSemana(semanaInicio, semanaFin) {
+    const sb = await client();
+    const { data, error } = await sb
+      .from("pagos_nomina")
+      .select(nominaJoin)
+      .eq("semana_inicio", semanaInicio)
+      .eq("semana_fin", semanaFin);
+    checkErr(error, "nominas.pagosDeSemana");
+    return asArray<PagoNomina>(data);
+  },
+  async delete(id) {
+    const sb = await client();
+    const { error } = await sb.from("pagos_nomina").delete().eq("id", id);
+    checkErr(error, "nominas.delete");
+  },
+};
+
+// =====================================================================
 // Repository (export)
 // =====================================================================
 
@@ -1065,4 +1149,5 @@ export const supabaseRepository: Repository = {
   presupuestos: supabasePresupuestos,
   reembolsos: supabaseReembolsos,
   pushSubs: supabasePushSubs,
+  nominas: supabaseNominas,
 };

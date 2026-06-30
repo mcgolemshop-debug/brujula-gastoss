@@ -18,7 +18,9 @@ import type {
   MetodoPago,
   NuevoGastoInput,
   NuevoMobiliarioInput,
+  NuevoPagoNominaInput,
   NuevoReembolsoInput,
+  PagoNomina,
   PaginatedResult,
   Reembolso,
   TasaCambio,
@@ -37,6 +39,8 @@ import type {
   FacturasRepository,
   GastosRepository,
   MobiliarioRepository,
+  NominaFilters,
+  NominasRepository,
   PushSubsRepository,
   ReembolsoFilters,
   ReembolsosRepository,
@@ -53,6 +57,7 @@ class MockStore {
   mobiliario = new Map<string, Mobiliario>();
   tasaCambio: TasaCambio[] = [];
   reembolsos = new Map<string, Reembolso>();
+  pagosNomina = new Map<string, PagoNomina>();
   /** UUID del usuario "actual" (Orlando por defecto) — Fase 2 sin Auth real */
   currentUserId: string = "00000000-0000-0000-0000-000000000001";
   initialized = false;
@@ -80,6 +85,7 @@ class MockStore {
         avatar_url: null,
         activo: true,
         created_at: new Date().toISOString(),
+        salario_mensual_usd: null,
       });
     });
   }
@@ -194,7 +200,7 @@ function uid(prefix: string) {
 }
 
 // ===== Helpers =====
-function nextCodigo(prefix: "G" | "M", existing: string[], pad: number) {
+function nextCodigo(prefix: "G" | "M" | "N", existing: string[], pad: number) {
   const max = existing
     .filter((c) => c.startsWith(`${prefix}-`))
     .map((c) => parseInt(c.slice(2), 10))
@@ -833,6 +839,78 @@ export const mockPushSubs: PushSubsRepository = {
   },
 };
 
+// ===== Nómina =====
+function joinPagoNomina(p: PagoNomina): PagoNomina {
+  return { ...p, empleado: store.users.get(p.empleado_id) };
+}
+
+export const mockNominas: NominasRepository = {
+  async setSalario(empleadoId, salarioMensualUsd) {
+    const u = store.users.get(empleadoId);
+    if (!u) throw new Error("Empleado no encontrado");
+    store.users.set(empleadoId, {
+      ...u,
+      salario_mensual_usd: salarioMensualUsd,
+    });
+  },
+  async create(input: NuevoPagoNominaInput, registradoPor) {
+    const id = uid("nom");
+    const now = new Date().toISOString();
+    const total_usd =
+      input.salario_base_usd + input.bonos_usd - input.deducciones_usd;
+    const codigo = nextCodigo(
+      "N",
+      Array.from(store.pagosNomina.values()).map((p) => p.codigo),
+      4
+    );
+    const p: PagoNomina = {
+      id,
+      codigo,
+      empleado_id: input.empleado_id,
+      gasto_id: input.gasto_id ?? null,
+      semana_inicio: input.semana_inicio,
+      semana_fin: input.semana_fin,
+      salario_base_usd: input.salario_base_usd,
+      bonos_usd: input.bonos_usd,
+      deducciones_usd: input.deducciones_usd,
+      total_usd,
+      tasa_cambio: input.tasa_cambio,
+      total_bs: total_usd * input.tasa_cambio,
+      metodo_pago: input.metodo_pago,
+      notas: input.notas ?? null,
+      registrado_por: registradoPor,
+      created_at: now,
+      updated_at: now,
+    };
+    store.pagosNomina.set(id, p);
+    return joinPagoNomina(p);
+  },
+  async list(filters: NominaFilters = {}) {
+    let items = Array.from(store.pagosNomina.values()).map(joinPagoNomina);
+    if (filters.empleado_id)
+      items = items.filter((p) => p.empleado_id === filters.empleado_id);
+    if (filters.desde)
+      items = items.filter((p) => p.semana_inicio >= filters.desde!);
+    if (filters.hasta)
+      items = items.filter((p) => p.semana_inicio <= filters.hasta!);
+    return items.sort((a, b) => b.created_at.localeCompare(a.created_at));
+  },
+  async byId(id) {
+    const p = store.pagosNomina.get(id);
+    return p ? joinPagoNomina(p) : null;
+  },
+  async pagosDeSemana(semanaInicio, semanaFin) {
+    return Array.from(store.pagosNomina.values())
+      .filter(
+        (p) => p.semana_inicio === semanaInicio && p.semana_fin === semanaFin
+      )
+      .map(joinPagoNomina);
+  },
+  async delete(id) {
+    store.pagosNomina.delete(id);
+  },
+};
+
 export const mockRepository: Repository = {
   users: mockUsers,
   categorias: mockCategorias,
@@ -844,4 +922,5 @@ export const mockRepository: Repository = {
   presupuestos: mockPresupuestos,
   reembolsos: mockReembolsos,
   pushSubs: mockPushSubs,
+  nominas: mockNominas,
 };

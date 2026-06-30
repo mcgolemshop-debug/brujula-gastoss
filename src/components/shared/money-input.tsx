@@ -110,6 +110,7 @@ export function MoneyInput({
           : monedaEfectiva === "USD"
           ? toDisplayString(externalUsd)
           : toDisplayString(round(externalUsd * tasa, 2));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalStr(newStr);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -38,6 +38,8 @@ export interface User {
   avatar_url: string | null;
   activo: boolean;
   created_at: string;
+  /** Sueldo mensual de referencia en USD (para nómina). El pago semanal = /4. */
+  salario_mensual_usd?: number | null;
 }
 
 export interface StatsPersonales {
@@ -166,6 +168,43 @@ export interface NuevoReembolsoInput {
   beneficiario_id: string;
   monto_usd: number;
   monto_bs: number;
+  notas?: string | null;
+}
+
+// === Nómina ===
+
+export interface PagoNomina {
+  id: string;
+  codigo: string;
+  empleado_id: string;
+  gasto_id: string | null;
+  semana_inicio: string;
+  semana_fin: string;
+  salario_base_usd: number;
+  bonos_usd: number;
+  deducciones_usd: number;
+  total_usd: number;
+  tasa_cambio: number;
+  total_bs: number;
+  metodo_pago: MetodoPago | null;
+  notas: string | null;
+  registrado_por: string | null;
+  created_at: string;
+  updated_at: string;
+  // Join opcional
+  empleado?: User;
+}
+
+export interface NuevoPagoNominaInput {
+  empleado_id: string;
+  gasto_id: string | null;
+  semana_inicio: string;
+  semana_fin: string;
+  salario_base_usd: number;
+  bonos_usd: number;
+  deducciones_usd: number;
+  tasa_cambio: number;
+  metodo_pago: MetodoPago;
   notas?: string | null;
 }
 

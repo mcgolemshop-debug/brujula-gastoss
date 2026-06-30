@@ -37,8 +37,12 @@ export const CATEGORIAS_DEFAULT = [
   { nombre: "Combustible", icono: "Fuel", color: "#DC2626", tipo: "variable", notas: "Gasolina / Gas" },
   { nombre: "Medicinas", icono: "Pill", color: "#10B981", tipo: "variable", notas: "Botiquín oficina" },
   { nombre: "Papelería/Oficina", icono: "FileText", color: "#8B5CF6", tipo: "variable", notas: "Hojas, tinta, carpetas" },
+  { nombre: "Nómina", icono: "Wallet", color: "#0EA5E9", tipo: "fijo", notas: "Pago de sueldos al equipo" },
   { nombre: "Otros", icono: "MoreHorizontal", color: "#6B7280", tipo: "variable", notas: "Misceláneos" },
 ] as const;
+
+/** Nombre exacto de la categoría usada por los pagos de nómina */
+export const CATEGORIA_NOMINA = "Nómina";
 
 // === Equipo (8 personas — del Excel) ===
 export const EQUIPO_DEFAULT = [

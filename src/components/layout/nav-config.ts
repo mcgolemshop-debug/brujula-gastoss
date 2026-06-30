@@ -9,6 +9,7 @@ import {
   Settings,
   ScrollText,
   Wallet,
+  HandCoins,
   Plus,
   type LucideIcon,
 } from "lucide-react";
@@ -31,6 +32,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Reembolsos", href: "/reembolsos", icon: Wallet },
   { label: "Presupuestos", href: "/presupuestos", icon: Target, adminOnly: true },
   { label: "Equipo", href: "/equipo", icon: Users, adminOnly: true },
+  { label: "Nómina", href: "/nomina", icon: HandCoins, adminOnly: true },
   { label: "Configuración", href: "/configuracion", icon: Settings },
   { label: "Auditoría", href: "/auditoria", icon: ScrollText, adminOnly: true },
 ];

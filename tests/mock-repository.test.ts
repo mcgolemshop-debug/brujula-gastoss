@@ -33,9 +33,9 @@ describe("mockRepository.users", () => {
 });
 
 describe("mockRepository.categorias", () => {
-  it("lista las 12 categorías ordenadas", async () => {
+  it("lista las 13 categorías ordenadas", async () => {
     const cats = await mockRepository.categorias.list();
-    expect(cats.length).toBe(12);
+    expect(cats.length).toBe(13);
     // Comida es orden 1
     expect(cats[0].nombre).toBe("Comida");
     expect(cats[cats.length - 1].nombre).toBe("Otros");

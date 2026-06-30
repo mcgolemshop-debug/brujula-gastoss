@@ -15,7 +15,9 @@ import type {
   Mobiliario,
   NuevoGastoInput,
   NuevoMobiliarioInput,
+  NuevoPagoNominaInput,
   NuevoReembolsoInput,
+  PagoNomina,
   PaginatedResult,
   Presupuesto,
   Reembolso,
@@ -187,6 +189,24 @@ export interface PushSubsRepository {
   >;
 }
 
+export interface NominaFilters {
+  empleado_id?: string;
+  desde?: string;
+  hasta?: string;
+}
+
+export interface NominasRepository {
+  /** Define/actualiza el salario mensual (USD) de un empleado */
+  setSalario(empleadoId: string, salarioMensualUsd: number | null): Promise<void>;
+  /** Registra un pago de nómina (el gasto asociado lo crea la action) */
+  create(input: NuevoPagoNominaInput, registradoPor: string): Promise<PagoNomina>;
+  list(filters?: NominaFilters): Promise<PagoNomina[]>;
+  byId(id: string): Promise<PagoNomina | null>;
+  /** Pagos cuya semana cubierta coincide exactamente con el rango dado */
+  pagosDeSemana(semanaInicio: string, semanaFin: string): Promise<PagoNomina[]>;
+  delete(id: string): Promise<void>;
+}
+
 export interface Repository {
   users: UsersRepository;
   categorias: CategoriasRepository;
@@ -198,4 +218,5 @@ export interface Repository {
   presupuestos: PresupuestosRepository;
   reembolsos: ReembolsosRepository;
   pushSubs: PushSubsRepository;
+  nominas: NominasRepository;
 }
