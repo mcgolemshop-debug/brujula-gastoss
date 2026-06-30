@@ -2,7 +2,13 @@
 
 import * as React from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { Search, X, SlidersHorizontal, ChevronDown } from "lucide-react";
+import {
+  Search,
+  X,
+  SlidersHorizontal,
+  ChevronDown,
+  Calendar,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -219,30 +225,16 @@ export function GastosFilters({ categorias, usuarios }: Props) {
           </SelectContent>
         </Select>
 
-        <div className="space-y-1">
-          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground md:sr-only">
-            Desde
-          </Label>
-          <Input
-            type="date"
-            value={sp.get("desde") ?? ""}
-            onChange={(e) => setParam("desde", e.target.value)}
-            className="w-full md:w-auto h-9 text-xs"
-            aria-label="Fecha desde"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground md:sr-only">
-            Hasta
-          </Label>
-          <Input
-            type="date"
-            value={sp.get("hasta") ?? ""}
-            onChange={(e) => setParam("hasta", e.target.value)}
-            className="w-full md:w-auto h-9 text-xs"
-            aria-label="Fecha hasta"
-          />
-        </div>
+        <FechaInput
+          label="Desde"
+          value={sp.get("desde") ?? ""}
+          onChange={(v) => setParam("desde", v)}
+        />
+        <FechaInput
+          label="Hasta"
+          value={sp.get("hasta") ?? ""}
+          onChange={(v) => setParam("hasta", v)}
+        />
 
         {activeCount > 0 && (
           <Button
@@ -258,6 +250,49 @@ export function GastosFilters({ categorias, usuarios }: Props) {
               {activeCount}
             </Badge>
           </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Input de fecha con pista visible cuando está vacío. Los <input type="date">
+ * nativos no muestran placeholder (sobre todo en iOS Safari quedan en blanco),
+ * así que superponemos un ícono + "dd/mm/aaaa" mientras no haya fecha elegida.
+ */
+function FechaInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground md:sr-only">
+        {label}
+      </Label>
+      <div className="relative">
+        <Calendar className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+        <Input
+          type="date"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          aria-label={`Fecha ${label.toLowerCase()}`}
+          className={cn(
+            "w-full md:w-auto h-9 text-xs pl-8",
+            // Ocultar el placeholder nativo "mm/dd/yyyy" cuando está vacío para
+            // no duplicar con nuestra pista.
+            !value && "[&::-webkit-datetime-edit]:text-transparent"
+          )}
+        />
+        {!value && (
+          <span className="pointer-events-none absolute left-8 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+            dd/mm/aaaa
+          </span>
         )}
       </div>
     </div>
