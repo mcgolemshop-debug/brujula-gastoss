@@ -1,14 +1,12 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Wallet, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Wallet, AlertTriangle } from "lucide-react";
 import { repo } from "@/lib/repositories";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { EmptyState } from "@/components/shared/empty-state";
 import { MoneyDisplay } from "@/components/shared/money-display";
-// import { ReembolsoRow } from "./_components/reembolso-row"; // ← TEMPORAL: aislando
+import { ReembolsosTabs } from "./_components/reembolsos-tabs";
 import { formatUSD, getInitials, colorFromName } from "@/lib/utils";
 import type { Reembolso } from "@/types/domain";
 
@@ -39,9 +37,7 @@ function ErrorPage({ msg }: { msg: string }) {
 interface DataResult {
   reembolsos: Reembolso[];
   tasaUsdBs: number;
-  totales: Awaited<
-    ReturnType<typeof repo.reembolsos.totalesPorBeneficiario>
-  >;
+  totales: Awaited<ReturnType<typeof repo.reembolsos.totalesPorBeneficiario>>;
   error: string | null;
 }
 
@@ -53,9 +49,11 @@ async function loadData(isAdmin: boolean, userId: string): Promise<DataResult> {
       repo.tasaCambio.actual(),
       isAdmin
         ? repo.reembolsos.totalesPorBeneficiario()
-        : Promise.resolve([] as Awaited<
-            ReturnType<typeof repo.reembolsos.totalesPorBeneficiario>
-          >),
+        : Promise.resolve(
+            [] as Awaited<
+              ReturnType<typeof repo.reembolsos.totalesPorBeneficiario>
+            >
+          ),
     ]);
     return {
       reembolsos,
@@ -104,7 +102,7 @@ export default async function ReembolsosPage() {
     <div className="container max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
       <PageHeader
         eyebrow="Caja"
-        title="Reembolsos · v2"
+        title="Reembolsos"
         description={
           isAdmin
             ? `${pendientes.length} pendiente${pendientes.length === 1 ? "" : "s"} · ${formatUSD(totalPendiente)} por pagar`
@@ -112,6 +110,7 @@ export default async function ReembolsosPage() {
         }
       />
 
+      {/* Resumen por beneficiario (solo admin, si hay pendientes) */}
       {isAdmin && data.totales.length > 0 && (
         <Card className="p-4 md:p-5">
           <h2 className="text-sm font-medium mb-3 flex items-center gap-2">
@@ -135,7 +134,9 @@ export default async function ReembolsosPage() {
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium truncate">{t.nombre}</div>
+                    <div className="text-sm font-medium truncate">
+                      {t.nombre}
+                    </div>
                     <div className="text-[10px] text-muted-foreground">
                       {t.cuenta} reembolso{t.cuenta === 1 ? "" : "s"}
                     </div>
@@ -153,48 +154,12 @@ export default async function ReembolsosPage() {
         </Card>
       )}
 
-      <Tabs defaultValue="pendiente" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="pendiente" className="gap-1.5">
-            <Clock className="h-3.5 w-3.5" />
-            Pendientes
-            <span className="ml-1 text-[10px] tabular-nums opacity-70">
-              {pendientes.length}
-            </span>
-          </TabsTrigger>
-          <TabsTrigger value="pagado" className="gap-1.5">
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            Pagados
-            <span className="ml-1 text-[10px] tabular-nums opacity-70">
-              {pagados.length}
-            </span>
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="pendiente">
-          <Card className="py-4">
-            <EmptyState
-              icon={Wallet}
-              title="No hay reembolsos pendientes"
-              description={
-                isAdmin
-                  ? "Cuando alguien pague un gasto con dinero personal aparecerá aquí."
-                  : "No tienes reembolsos pendientes por cobrar."
-              }
-            />
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="pagado">
-          <Card className="py-4">
-            <EmptyState
-              icon={CheckCircle2}
-              title="Sin historial"
-              description="Aún no se ha registrado ningún reembolso pagado."
-            />
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <ReembolsosTabs
+        pendientes={pendientes}
+        pagados={pagados}
+        isAdmin={isAdmin}
+        tasa={data.tasaUsdBs}
+      />
     </div>
   );
 }
