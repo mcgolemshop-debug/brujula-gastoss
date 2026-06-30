@@ -2,9 +2,10 @@
 
 import * as React from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { Search, X, SlidersHorizontal } from "lucide-react";
+import { Search, X, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -13,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { METODOS_PAGO } from "@/lib/constants";
 import type { Categoria, User } from "@/types/domain";
 
@@ -65,22 +67,24 @@ export function GastosFilters({ categorias, usuarios }: Props) {
     router.replace(pathname, { scroll: false });
   };
 
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
+
   const activeCount = ["cat", "user", "pago", "desde", "hasta"].filter((k) =>
     sp.get(k)
   ).length;
 
   return (
     <div className="space-y-3">
-      {/* Search bar */}
+      {/* Search bar + toggle de filtros en móvil */}
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
             type="search"
-            placeholder="Buscar por descripción, código, persona, lugar..."
+            placeholder="Buscar gasto..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+            className="pl-9 h-10"
           />
           {search && (
             <button
@@ -93,6 +97,31 @@ export function GastosFilters({ categorias, usuarios }: Props) {
             </button>
           )}
         </div>
+
+        {/* Botón filtros (solo móvil) */}
+        <Button
+          type="button"
+          variant="outline"
+          size="default"
+          onClick={() => setFiltersOpen((o) => !o)}
+          className="md:hidden gap-1.5 shrink-0"
+          aria-expanded={filtersOpen}
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          {activeCount > 0 && (
+            <Badge variant="accent" className="h-5 px-1.5 text-[10px]">
+              {activeCount}
+            </Badge>
+          )}
+          <ChevronDown
+            className={cn(
+              "h-3.5 w-3.5 transition-transform",
+              filtersOpen && "rotate-180"
+            )}
+          />
+        </Button>
+
+        {/* Orden (solo desktop) */}
         <Select
           value={sp.get("sort") ?? "fecha_desc"}
           onValueChange={(v) => setParam("sort", v)}
@@ -110,9 +139,14 @@ export function GastosFilters({ categorias, usuarios }: Props) {
         </Select>
       </div>
 
-      {/* Filtros */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-widest pr-1">
+      {/* Filtros: colapsables en móvil, siempre visibles en desktop */}
+      <div
+        className={cn(
+          "gap-2 md:flex md:flex-wrap md:items-center",
+          filtersOpen ? "grid grid-cols-2" : "hidden"
+        )}
+      >
+        <div className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-widest pr-1">
           <SlidersHorizontal className="h-3 w-3" />
           Filtros
         </div>
@@ -121,7 +155,7 @@ export function GastosFilters({ categorias, usuarios }: Props) {
           value={sp.get("cat") ?? "all"}
           onValueChange={(v) => setParam("cat", v)}
         >
-          <SelectTrigger className="w-auto h-8 text-xs gap-2">
+          <SelectTrigger className="w-full md:w-auto h-9 text-xs gap-2">
             <SelectValue placeholder="Categoría" />
           </SelectTrigger>
           <SelectContent>
@@ -138,7 +172,7 @@ export function GastosFilters({ categorias, usuarios }: Props) {
           value={sp.get("user") ?? "all"}
           onValueChange={(v) => setParam("user", v)}
         >
-          <SelectTrigger className="w-auto h-8 text-xs gap-2">
+          <SelectTrigger className="w-full md:w-auto h-9 text-xs gap-2">
             <SelectValue placeholder="Persona" />
           </SelectTrigger>
           <SelectContent>
@@ -155,7 +189,7 @@ export function GastosFilters({ categorias, usuarios }: Props) {
           value={sp.get("pago") ?? "all"}
           onValueChange={(v) => setParam("pago", v)}
         >
-          <SelectTrigger className="w-auto h-8 text-xs gap-2">
+          <SelectTrigger className="w-full md:w-auto h-9 text-xs gap-2">
             <SelectValue placeholder="Método de pago" />
           </SelectTrigger>
           <SelectContent>
@@ -168,20 +202,47 @@ export function GastosFilters({ categorias, usuarios }: Props) {
           </SelectContent>
         </Select>
 
-        <Input
-          type="date"
-          placeholder="Desde"
-          value={sp.get("desde") ?? ""}
-          onChange={(e) => setParam("desde", e.target.value)}
-          className="w-auto h-8 text-xs"
-        />
-        <Input
-          type="date"
-          placeholder="Hasta"
-          value={sp.get("hasta") ?? ""}
-          onChange={(e) => setParam("hasta", e.target.value)}
-          className="w-auto h-8 text-xs"
-        />
+        {/* Orden (solo móvil, dentro del panel) */}
+        <Select
+          value={sp.get("sort") ?? "fecha_desc"}
+          onValueChange={(v) => setParam("sort", v)}
+        >
+          <SelectTrigger className="w-full h-9 text-xs gap-2 md:hidden">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SORT_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <div className="space-y-1">
+          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground md:sr-only">
+            Desde
+          </Label>
+          <Input
+            type="date"
+            value={sp.get("desde") ?? ""}
+            onChange={(e) => setParam("desde", e.target.value)}
+            className="w-full md:w-auto h-9 text-xs"
+            aria-label="Fecha desde"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-[10px] uppercase tracking-wider text-muted-foreground md:sr-only">
+            Hasta
+          </Label>
+          <Input
+            type="date"
+            value={sp.get("hasta") ?? ""}
+            onChange={(e) => setParam("hasta", e.target.value)}
+            className="w-full md:w-auto h-9 text-xs"
+            aria-label="Fecha hasta"
+          />
+        </div>
 
         {activeCount > 0 && (
           <Button
@@ -189,10 +250,10 @@ export function GastosFilters({ categorias, usuarios }: Props) {
             variant="ghost"
             size="sm"
             onClick={clearAll}
-            className="h-8 gap-1.5 text-xs"
+            className="col-span-2 md:col-auto h-9 gap-1.5 text-xs"
           >
             <X className="h-3 w-3" />
-            Limpiar
+            Limpiar filtros
             <Badge variant="muted" className="ml-1 text-[9px] h-4 px-1.5">
               {activeCount}
             </Badge>

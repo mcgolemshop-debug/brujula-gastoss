@@ -102,8 +102,9 @@ function KpiCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay, ease: [0.4, 0, 0.2, 1] }}
+      className="h-full"
     >
-      <Card className="p-5 hover:shadow-elegant hover:border-accent/40 transition-all relative overflow-hidden group">
+      <Card className="h-full p-5 hover:shadow-elegant hover:border-accent/40 transition-all relative overflow-hidden group">
         <CardContent className="p-0 space-y-3">
           <div className="flex items-start justify-between gap-2">
             <span className="text-[10px] md:text-xs uppercase tracking-widest text-muted-foreground font-medium">

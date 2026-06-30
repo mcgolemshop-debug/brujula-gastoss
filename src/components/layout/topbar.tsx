@@ -6,6 +6,7 @@ import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./theme-toggle";
 import { UserMenu } from "./user-menu";
+import { MobileNavDrawer } from "./mobile-nav-drawer";
 import { NAV_ITEMS } from "./nav-config";
 import { useCommandPalette } from "@/components/command-palette/command-palette-provider";
 
@@ -28,7 +29,8 @@ export function Topbar({ user }: TopbarProps) {
 
   return (
     <header className="sticky top-0 z-20 h-16 border-b border-border bg-background/80 backdrop-blur-md flex items-center justify-between gap-3 px-4 md:px-6">
-      <div className="flex items-center gap-2 min-w-0">
+      <div className="flex items-center gap-1.5 min-w-0">
+        <MobileNavDrawer userRole={user.role} />
         <div className="hidden md:flex items-center gap-2 text-sm">
           <span className="text-muted-foreground font-medium">Brújula</span>
           {currentSection && (
