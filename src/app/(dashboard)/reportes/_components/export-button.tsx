@@ -20,6 +20,10 @@ interface Props {
   rango: { desde: string; hasta: string };
   tasa?: number;
   generadoPor?: string;
+  /** Etiqueta legible del período (ej. "Mayo 2026", "Año 2026", "Todo el histórico") */
+  periodoLabel?: string;
+  /** Slug para nombres de archivo (ej. "2026-05", "2026", "historico") */
+  periodoSlug?: string;
 }
 
 export function ExportButton({
@@ -27,8 +31,11 @@ export function ExportButton({
   rango,
   tasa = 36.5,
   generadoPor = "Brujula Markets",
+  periodoLabel,
+  periodoSlug,
 }: Props) {
   const [pdfLoading, setPdfLoading] = React.useState(false);
+  const slug = periodoSlug ?? `${rango.desde}-a-${rango.hasta}`;
 
   function buildRows() {
     return gastos.map((g) => ({
@@ -60,10 +67,7 @@ export function ExportButton({
     const blob = new Blob(["﻿" + csv], {
       type: "text/csv;charset=utf-8;",
     });
-    triggerDownload(
-      blob,
-      `brujula-gastos-${rango.desde}-a-${rango.hasta}.csv`
-    );
+    triggerDownload(blob, `brujula-gastos-${slug}.csv`);
     toast.success("CSV exportado", { description: `${rows.length} gastos` });
   }
 
@@ -76,7 +80,7 @@ export function ExportButton({
       wch: Math.max(k.length, 14),
     }));
     ws["!cols"] = cols;
-    XLSX.writeFile(wb, `brujula-gastos-${rango.desde}-a-${rango.hasta}.xlsx`);
+    XLSX.writeFile(wb, `brujula-gastos-${slug}.xlsx`);
     toast.success("Excel exportado", { description: `${rows.length} gastos` });
   }
 
@@ -85,7 +89,14 @@ export function ExportButton({
     try {
       // Dynamic import: el bundle PDF (~500KB) solo se descarga al primer click
       const { downloadPdfReport } = await import("./pdf-report");
-      await downloadPdfReport({ gastos, rango, tasa, generadoPor });
+      await downloadPdfReport({
+        gastos,
+        rango,
+        tasa,
+        generadoPor,
+        periodoLabel,
+        periodoSlug: slug,
+      });
       toast.success("PDF generado", { description: `${gastos.length} gastos` });
     } catch (e) {
       toast.error("No se pudo generar el PDF", {

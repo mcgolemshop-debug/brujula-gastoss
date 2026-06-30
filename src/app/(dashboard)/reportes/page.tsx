@@ -2,26 +2,55 @@ import type { Metadata } from "next";
 import { repo } from "@/lib/repositories";
 import { PageHeader } from "@/components/shared/page-header";
 import { ReportesContent } from "./_components/reportes-content";
+import {
+  rangoMes,
+  rangoAnio,
+  rangoTodo,
+  etiquetaPeriodo,
+  slugPeriodo,
+  type ModoReporte,
+  type RangoFechas,
+} from "@/lib/periodo";
 
 export const metadata: Metadata = { title: "Reportes" };
 
 interface PageProps {
-  searchParams: Promise<{ desde?: string; hasta?: string }>;
+  searchParams: Promise<{
+    modo?: string;
+    mes?: string;
+    anio?: string;
+  }>;
 }
 
 export default async function ReportesPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const today = new Date();
-  // Default: últimos 6 meses
-  const seisMesesAtras = new Date(today.getFullYear(), today.getMonth() - 5, 1);
-  const desde =
-    sp.desde ?? seisMesesAtras.toISOString().slice(0, 10);
-  const hasta = sp.hasta ?? today.toISOString().slice(0, 10);
+
+  const modo: ModoReporte =
+    sp.modo === "mes" || sp.modo === "todo" ? sp.modo : "anio";
+
+  // Selección actual (para el selector)
+  const mesActual =
+    sp.mes ??
+    `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  const anioActual = sp.anio ? parseInt(sp.anio, 10) : today.getFullYear();
+
+  let rango: RangoFechas;
+  if (modo === "mes") {
+    rango = rangoMes(mesActual);
+  } else if (modo === "todo") {
+    rango = rangoTodo(today.toISOString().slice(0, 10));
+  } else {
+    rango = rangoAnio(anioActual);
+  }
+
+  const periodoLabel = etiquetaPeriodo(modo, rango.desde);
+  const periodoSlug = slugPeriodo(modo, rango.desde);
 
   const [gastos, tasa, usuarios, categorias] = await Promise.all([
     repo.gastos.list({
-      fecha_desde: desde,
-      fecha_hasta: hasta,
+      fecha_desde: rango.desde,
+      fecha_hasta: rango.hasta,
       page_size: 5000,
       sort: "fecha_asc",
     }),
@@ -35,14 +64,19 @@ export default async function ReportesPage({ searchParams }: PageProps) {
       <PageHeader
         eyebrow="Análisis"
         title="Reportes"
-        description={`${gastos.total} ${gastos.total === 1 ? "gasto" : "gastos"} desde ${desde} hasta ${hasta} · datos en vivo`}
+        description={`${periodoLabel} · ${gastos.total} ${gastos.total === 1 ? "gasto" : "gastos"} · datos en vivo`}
       />
       <ReportesContent
         gastos={gastos.items}
         tasa={tasa.valor_bs_por_usd}
         usuarios={usuarios}
         categorias={categorias}
-        rango={{ desde, hasta }}
+        rango={rango}
+        modo={modo}
+        mesActual={mesActual}
+        anioActual={anioActual}
+        periodoLabel={periodoLabel}
+        periodoSlug={periodoSlug}
       />
     </div>
   );

@@ -195,6 +195,10 @@ interface PdfReportProps {
   rango: { desde: string; hasta: string };
   tasa: number;
   generadoPor: string;
+  /** Etiqueta legible del período (ej. "Mayo 2026") */
+  periodoLabel?: string;
+  /** Slug para el nombre del archivo */
+  periodoSlug?: string;
 }
 
 export function GastosReportDocument({
@@ -202,6 +206,7 @@ export function GastosReportDocument({
   rango,
   tasa,
   generadoPor,
+  periodoLabel,
 }: PdfReportProps) {
   const totalUsd = gastos.reduce((s, g) => s + g.total_usd, 0);
   const totalBs = totalUsd * tasa;
@@ -230,7 +235,7 @@ export function GastosReportDocument({
 
   return (
     <Document
-      title={`Brujula - Gastos ${rango.desde} a ${rango.hasta}`}
+      title={`Brujula - Gastos ${periodoLabel ?? `${rango.desde} a ${rango.hasta}`}`}
       author="Brujula Markets"
       subject="Reporte de gastos operativos"
     >
@@ -246,10 +251,12 @@ export function GastosReportDocument({
               </View>
             </View>
             <View style={styles.metaRight}>
-              <Text style={styles.reportTitle}>Reporte de gastos</Text>
-              <Text>
-                Del {desdeF}
+              <Text style={styles.reportTitle}>
+                {periodoLabel
+                  ? `Reporte · ${periodoLabel}`
+                  : "Reporte de gastos"}
               </Text>
+              <Text>Del {desdeF}</Text>
               <Text>al {hastaF}</Text>
             </View>
           </View>
@@ -376,7 +383,8 @@ export async function downloadPdfReport(props: PdfReportProps): Promise<void> {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `brujula-gastos-${props.rango.desde}-a-${props.rango.hasta}.pdf`;
+  const slug = props.periodoSlug ?? `${props.rango.desde}-a-${props.rango.hasta}`;
+  a.download = `brujula-gastos-${slug}.pdf`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
