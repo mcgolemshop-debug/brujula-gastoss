@@ -63,10 +63,18 @@ export const NumericInput = React.forwardRef<
     }, [value]);
 
     function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-      const raw = e.target.value;
+      // Normalizar coma decimal (teclados es-VE escriben "," donde el HTML
+      // number espera ".") y sanitizar a solo dígitos + un punto. Esto evita
+      // el bug en móvil donde "8,50" se perdía y el precio quedaba vacío.
+      let raw = e.target.value.replace(",", ".").replace(/[^0-9.]/g, "");
+      const dot = raw.indexOf(".");
+      if (dot !== -1) {
+        raw = raw.slice(0, dot + 1) + raw.slice(dot + 1).replace(/\./g, "");
+      }
+      if (variant === "integer") raw = raw.replace(/\./g, "");
       setLocalValue(raw);
 
-      if (raw === "" || raw === "-" || raw === "." || raw === "-.") {
+      if (raw === "" || raw === ".") {
         // Estados intermedios válidos durante escritura
         onChange(undefined);
         return;
@@ -85,7 +93,7 @@ export const NumericInput = React.forwardRef<
 
     function handleBlur(e: React.FocusEvent<HTMLInputElement>) {
       // Normalizar el formato al salir: "01" → "1", "1." → "1"
-      if (localValue !== "" && localValue !== "-") {
+      if (localValue !== "" && localValue !== ".") {
         const num = parseFloat(localValue);
         if (!isNaN(num)) {
           const normalized =
@@ -98,12 +106,15 @@ export const NumericInput = React.forwardRef<
       onBlur?.(e);
     }
 
+    // type="text" + inputMode (no "number"): nos da control total del parsing
+    // y evita que el navegador descarte valores con coma en móvil.
+    void step;
     return (
       <Input
         ref={ref}
-        type="number"
-        step={step ?? (variant === "integer" ? "1" : "0.01")}
+        type="text"
         inputMode={inputMode ?? (variant === "integer" ? "numeric" : "decimal")}
+        autoComplete="off"
         value={localValue}
         onChange={handleChange}
         onBlur={handleBlur}

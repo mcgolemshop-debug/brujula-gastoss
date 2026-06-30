@@ -137,11 +137,17 @@ export function MoneyInput({
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const raw = e.target.value;
+    // Normalizar coma decimal (teclados es-VE) → punto y sanitizar. Sin esto,
+    // en móvil "8,50" se interpretaba como 8 y el precio quedaba mal/vacío.
+    let raw = e.target.value.replace(",", ".").replace(/[^0-9.]/g, "");
+    const dot = raw.indexOf(".");
+    if (dot !== -1) {
+      raw = raw.slice(0, dot + 1) + raw.slice(dot + 1).replace(/\./g, "");
+    }
     setLocalStr(raw);
 
     // Estados intermedios válidos durante escritura
-    if (raw === "" || raw === "." || raw === "-" || raw === "-.") {
+    if (raw === "" || raw === ".") {
       onChange(undefined);
       return;
     }

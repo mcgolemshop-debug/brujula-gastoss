@@ -77,8 +77,17 @@ export async function subirFacturaAction(
   if (file.size > 10 * 1024 * 1024) {
     return { ok: false, error: "Archivo muy grande (máx 10 MB)" };
   }
-  const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
-  if (!allowed.includes(file.type)) {
+  const allowed = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/heic",
+    "image/heif",
+    "application/pdf",
+  ];
+  // iOS a veces reporta type vacío ("") para fotos HEIC de la cámara; lo
+  // permitimos (el tamaño ya está acotado a 10 MB).
+  if (file.type !== "" && !allowed.includes(file.type)) {
     return { ok: false, error: "Tipo de archivo no permitido" };
   }
 

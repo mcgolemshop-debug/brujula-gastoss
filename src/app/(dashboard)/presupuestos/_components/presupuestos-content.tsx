@@ -100,13 +100,13 @@ export function PresupuestosContent({
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            size="icon-sm"
+            size="icon"
             onClick={() => navMonth(-1)}
             aria-label="Mes anterior"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <div className="text-center min-w-[180px]">
+          <div className="text-center min-w-[140px] sm:min-w-[180px]">
             <div className="font-serif text-2xl font-medium tracking-tight">
               {MESES[mes - 1]}
             </div>
@@ -116,7 +116,7 @@ export function PresupuestosContent({
           </div>
           <Button
             variant="outline"
-            size="icon-sm"
+            size="icon"
             onClick={() => navMonth(1)}
             aria-label="Mes siguiente"
           >

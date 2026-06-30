@@ -54,7 +54,10 @@ export default async function DashboardLayout({
         <Sidebar userRole={user.role} />
         <div className="flex-1 flex flex-col min-w-0">
           <Topbar user={user} />
-          <main className="flex-1 overflow-x-hidden pb-20 md:pb-6">
+          {/* pb generoso en móvil: libera el nav inferior + el FAB central
+              (que sobresale ~88px) + el safe-area del iPhone, para que ningún
+              botón de submit quede tapado por el FAB. */}
+          <main className="flex-1 overflow-x-hidden pb-[calc(7rem+env(safe-area-inset-bottom))] md:pb-6">
             {children}
           </main>
         </div>

@@ -69,6 +69,9 @@ export function ImageUpload({
       "image/jpeg": [".jpg", ".jpeg"],
       "image/png": [".png"],
       "image/webp": [".webp"],
+      // Formato nativo de cámara iPhone
+      "image/heic": [".heic"],
+      "image/heif": [".heif"],
     },
     maxFiles: 1,
     maxSize: maxSizeMB * 1024 * 1024,
