@@ -23,11 +23,23 @@ revises y confirmes. **La entrada manual sigue igual**; el escáner es opcional.
 ### 2. Cargar secrets en Supabase
 ```bash
 supabase secrets set GEMINI_API_KEY=TU_KEY_AQUI
-supabase secrets set GEMINI_MODEL=gemini-2.5-flash
+supabase secrets set GEMINI_MODEL=gemini-3.6-flash
 ```
-> Verifica en `ai.google.dev` cuál es el modelo Flash vigente (p. ej. la familia
-> Gemini 3 Flash) y ajusta `GEMINI_MODEL` si conviene. El diseño no depende del
-> modelo exacto.
+> **Los modelos pinneados de Gemini se retiran cada ~6 meses** y devuelven
+> `404 NOT_FOUND` de golpe (p. ej. `gemini-2.0-flash` murió 2026-06-01;
+> `gemini-2.5-flash` muere 2026-10-16). Si un día el escáner tira
+> `proveedor_404: ... is no longer available`, verifica el Flash GA vigente en
+> `ai.google.dev/gemini-api/docs/models` y actualiza **solo** el secret
+> `GEMINI_MODEL` + redeploy. El diseño no depende del modelo exacto.
+>
+> Para ver qué modelos acepta TU key (PowerShell):
+> ```powershell
+> Invoke-RestMethod -Uri "https://generativelanguage.googleapis.com/v1beta/models" `
+>   -Headers @{ "x-goog-api-key" = "TU_KEY" } |
+>   Select-Object -ExpandProperty models |
+>   Where-Object { $_.supportedGenerationMethods -contains "generateContent" } |
+>   Select-Object -ExpandProperty name
+> ```
 
 ### 3. Desplegar la Edge Function
 ```bash

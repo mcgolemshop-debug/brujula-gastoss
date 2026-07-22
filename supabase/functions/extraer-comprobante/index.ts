@@ -3,21 +3,35 @@
 // llama a Gemini con salida estructurada → devuelve el contrato de extracción.
 //
 // Deploy: supabase functions deploy extraer-comprobante
-// Secrets: supabase secrets set GEMINI_API_KEY=... GEMINI_MODEL=gemini-2.5-flash
+// Secrets: supabase secrets set GEMINI_API_KEY=... GEMINI_MODEL=gemini-3.6-flash
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { encodeBase64 } from "jsr:@std/encoding/base64";
 import { construirPrompt, construirResponseSchema } from "./prompt.ts";
 
-const MODEL = Deno.env.get("GEMINI_MODEL") ?? "gemini-2.5-flash";
+// Modelo Flash GA vigente (jul 2026). Google retira versiones pinneadas cada
+// ~6 meses (2.0-flash murió 2026-06-01; 2.5-flash muere 2026-10-16), así que
+// esto se controla por el secret GEMINI_MODEL para poder rotarlo sin tocar código.
+const MODEL = Deno.env.get("GEMINI_MODEL") ?? "gemini-3.6-flash";
+
+// CORS: la app (en Vercel, otro origen) llama a esta función desde el navegador,
+// que primero hace un preflight OPTIONS. Hay que responderlo y adjuntar los
+// headers CORS a TODAS las respuestas.
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
     status: s,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...CORS },
   });
 
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ ok: false, error: "Método no permitido" }, 405);
 
   try {
@@ -70,7 +84,6 @@ Deno.serve(async (req) => {
         temperature: 0,
         response_mime_type: "application/json",
         response_schema: construirResponseSchema({ categorias, unidades, metodos }),
-        thinkingConfig: { thinkingBudget: 0 },
         maxOutputTokens: 16384,
       },
     };
@@ -84,8 +97,22 @@ Deno.serve(async (req) => {
       },
     );
 
-    if (r.status === 429) return json({ ok: false, error: "cuota_agotada", retriable: true }, 429);
-    if (!r.ok) return json({ ok: false, error: `proveedor_${r.status}` }, 502);
+    if (r.status === 429) {
+      const q = await r.text().catch(() => "");
+      console.error("[extraer-comprobante] 429 de Gemini:", q);
+      return json(
+        { ok: false, error: `cuota_agotada: ${q.slice(0, 500)}`, retriable: true },
+        429
+      );
+    }
+    if (!r.ok) {
+      const errText = await r.text().catch(() => "");
+      console.error(`[extraer-comprobante] ${r.status} de Gemini:`, errText);
+      return json(
+        { ok: false, error: `proveedor_${r.status}: ${errText.slice(0, 400)}` },
+        502
+      );
+    }
 
     const out = await r.json();
     // deno-lint-ignore no-explicit-any
