@@ -1,11 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm, FormProvider, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
-import { Plus, Loader2, Send, RotateCcw } from "lucide-react";
+import { Plus, Loader2, Send, RotateCcw, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +13,10 @@ import {
   type LoteGastosInput,
   type LoteRowInput,
 } from "@/lib/validations/gasto";
-import { crearLoteGastosAction } from "../../_actions";
+import {
+  crearLoteGastosAction,
+  adjuntarComprobanteEscaneadoAction,
+} from "../../_actions";
 import type { Categoria, User } from "@/types/domain";
 import type { Moneda } from "@/components/shared/money-input";
 import { LoteHeader } from "./lote-header";
@@ -21,6 +24,7 @@ import { LoteRow } from "./lote-row";
 import { LoteResumen } from "./lote-resumen";
 
 const DRAFT_KEY = "brujula:lote:draft";
+const PREFILL_KEY = "catalejo:prefill";
 
 const EMPTY_ROW: LoteRowInput = {
   categoria_id: "",
@@ -42,6 +46,13 @@ interface Props {
   tasaActual: number;
 }
 
+interface CatalejoInfo {
+  tmpPath: string | null;
+  advertencias: string[];
+  resumen: string;
+  cuadra: boolean;
+}
+
 export function LoteForm({
   categorias,
   currentUser,
@@ -50,27 +61,31 @@ export function LoteForm({
   tasaActual,
 }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [foto, setFoto] = React.useState<File | null>(null);
   const [moneda, setMoneda] = React.useState<Moneda>("Bs");
   const [submitting, setSubmitting] = React.useState(false);
+  const [catalejo, setCatalejo] = React.useState<CatalejoInfo | null>(null);
   const [progress, setProgress] = React.useState<{ done: number; total: number } | null>(
     null
+  );
+
+  const defaultHeader = React.useCallback(
+    () => ({
+      fecha: new Date().toISOString().slice(0, 10),
+      hora: new Date().toTimeString().slice(0, 5),
+      usuario_id: currentUser.id,
+      metodo_pago: "Efectivo $" as const,
+      lugar_compra: "",
+      numero_factura: "",
+    }),
+    [currentUser.id]
   );
 
   const form = useForm<LoteGastosInput>({
     resolver: zodResolver(loteGastosSchema),
     mode: "onChange",
-    defaultValues: {
-      header: {
-        fecha: new Date().toISOString().slice(0, 10),
-        hora: new Date().toTimeString().slice(0, 5),
-        usuario_id: currentUser.id,
-        metodo_pago: "Efectivo $",
-        lugar_compra: "",
-        numero_factura: "",
-      },
-      rows: [{ ...EMPTY_ROW }],
-    },
+    defaultValues: { header: defaultHeader(), rows: [{ ...EMPTY_ROW }] },
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -90,13 +105,58 @@ export function LoteForm({
     return () => sub.unsubscribe();
   }, [form]);
 
-  // Restaurar draft al montar
+  // Al montar: PREFILL de Catalejo tiene prioridad sobre el autosave.
   React.useEffect(() => {
+    // 1. Prefill de Catalejo (viene de escanear un comprobante)
+    if (searchParams.get("catalejo")) {
+      try {
+        const raw = sessionStorage.getItem(PREFILL_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const p = parsed?.prefill;
+          const vigente = Date.now() - (parsed?.creadoEn ?? 0) < 10 * 60 * 1000;
+          if (p?.destino === "lote" && vigente) {
+            const rows: LoteRowInput[] = p.rows.map((r: LoteRowInput) => ({
+              categoria_id: r.categoria_id,
+              descripcion: r.descripcion,
+              cantidad: r.cantidad,
+              unidad: r.unidad,
+              items: r.items,
+              precio_unitario_usd: r.precio_unitario_usd,
+              observaciones: r.observaciones ?? "",
+              va_a_inventario: r.va_a_inventario ?? false,
+              mobiliario_id: r.mobiliario_id ?? null,
+            }));
+            form.reset({
+              header: {
+                ...defaultHeader(),
+                ...p.header,
+                usuario_id: currentUser.id,
+                metodo_pago: p.header.metodo_pago || "Efectivo $",
+              },
+              rows,
+            });
+            setMoneda(p.moneda ?? "Bs");
+            setCatalejo({
+              tmpPath: parsed.tmpPath ?? null,
+              advertencias: p.advertencias ?? [],
+              resumen: `${p.meta?.comercio ?? "Factura"} · ${rows.length} filas`,
+              cuadra: p.meta?.cuadra ?? true,
+            });
+            sessionStorage.removeItem(PREFILL_KEY);
+            return; // no restaurar draft
+          }
+        }
+      } catch {
+        /* noop */
+      }
+    }
+
+    // 2. Restaurar draft normal
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
       if (!raw) return;
       const draft = JSON.parse(raw) as LoteGastosInput;
-      // Solo restauramos si el usuario_id coincide con el actual (o admin)
       if (
         draft.header?.usuario_id === currentUser.id ||
         currentUser.rol === "admin"
@@ -110,18 +170,9 @@ export function LoteForm({
   }, []);
 
   function handleReset() {
-    form.reset({
-      header: {
-        fecha: new Date().toISOString().slice(0, 10),
-        hora: new Date().toTimeString().slice(0, 5),
-        usuario_id: currentUser.id,
-        metodo_pago: "Efectivo $",
-        lugar_compra: "",
-        numero_factura: "",
-      },
-      rows: [{ ...EMPTY_ROW }],
-    });
+    form.reset({ header: defaultHeader(), rows: [{ ...EMPTY_ROW }] });
     setFoto(null);
+    setCatalejo(null);
     localStorage.removeItem(DRAFT_KEY);
     toast.success("Lote reiniciado");
   }
@@ -147,6 +198,14 @@ export function LoteForm({
         return;
       }
 
+      // Adjuntar el comprobante escaneado a cada gasto creado
+      if (catalejo?.tmpPath && result.data.creados.length > 0) {
+        await adjuntarComprobanteEscaneadoAction({
+          gastoIds: result.data.creados.map((c) => c.id),
+          tmpPath: catalejo.tmpPath,
+        }).catch(() => {});
+      }
+
       toast.success(
         `${result.data.creados.length} gasto${result.data.creados.length === 1 ? "" : "s"} guardado${result.data.creados.length === 1 ? "" : "s"}`,
         {
@@ -170,7 +229,6 @@ export function LoteForm({
   const rowsCount = fields.length;
   const canAddMore = rowsCount < 999;
   const canRemoveRow = rowsCount > 1;
-  // Aviso suave si el lote se vuelve grande (serverless function timeout aprox)
   const muyGrande = rowsCount > 50;
 
   return (
@@ -179,6 +237,34 @@ export function LoteForm({
         onSubmit={form.handleSubmit(onSubmit)}
         className="space-y-4 pb-24 md:pb-6"
       >
+        {/* Banner de Catalejo (datos escaneados) */}
+        {catalejo && (
+          <div
+            className={
+              "rounded-lg border p-3 space-y-2 " +
+              (catalejo.cuadra
+                ? "border-accent/30 bg-accent/5"
+                : "border-amber-500/30 bg-amber-500/5")
+            }
+          >
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <ScanLine className="h-4 w-4 text-accent shrink-0" />
+              Datos escaneados: {catalejo.resumen}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Son sugerencias — revisa y corrige antes de guardar. Puedes eliminar
+              filas que no correspondan (ej. compras personales).
+            </p>
+            {catalejo.advertencias.length > 0 && (
+              <ul className="text-[11px] text-amber-700 dark:text-amber-400 list-disc list-inside space-y-0.5">
+                {catalejo.advertencias.slice(0, 4).map((a, i) => (
+                  <li key={i}>{a}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
         <LoteHeader
           usuarios={usuarios}
           isAdmin={isAdmin}
@@ -253,11 +339,7 @@ export function LoteForm({
           )}
         </div>
 
-        <LoteResumen
-          tasaActual={tasaActual}
-          foto={foto}
-          isAdmin={isAdmin}
-        />
+        <LoteResumen tasaActual={tasaActual} foto={foto} isAdmin={isAdmin} />
 
         <div className="flex justify-end pt-2">
           <Button

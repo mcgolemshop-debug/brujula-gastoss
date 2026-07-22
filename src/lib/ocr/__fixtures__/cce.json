@@ -1,0 +1,22 @@
+{
+  "tipo_documento": "comprobante_sin_items",
+  "subtipo": "pago_movil",
+  "moneda": "Bs",
+  "comercio": { "nombre": null, "rif": null, "direccion": null },
+  "fecha": "2026-07-06",
+  "hora": null,
+  "numero_documento": "61859255190",
+  "metodo_pago_sugerido": "Pago Móvil",
+  "banco_emisor": null,
+  "banco_receptor": null,
+  "beneficiario": null,
+  "total": 15008.63,
+  "subtotal": null,
+  "iva_monto": null,
+  "alicuota_iva": null,
+  "descuento": null,
+  "conteo_items_impreso": null,
+  "items": [],
+  "confianza_global": 0.9,
+  "advertencias": ["Fila de estado de cuenta: no indica hora ni beneficiario."]
+}

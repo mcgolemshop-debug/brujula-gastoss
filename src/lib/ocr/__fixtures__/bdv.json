@@ -1,0 +1,22 @@
+{
+  "tipo_documento": "comprobante_sin_items",
+  "subtipo": "pago_movil",
+  "moneda": "Bs",
+  "comercio": { "nombre": null, "rif": null, "direccion": null },
+  "fecha": "2026-05-15",
+  "hora": null,
+  "numero_documento": "006028641644",
+  "metodo_pago_sugerido": "Pago Móvil",
+  "banco_emisor": "Banco de Venezuela (PagomóvilBDV)",
+  "banco_receptor": null,
+  "beneficiario": "04125340316",
+  "total": 200.00,
+  "subtotal": null,
+  "iva_monto": null,
+  "alicuota_iva": null,
+  "descuento": null,
+  "conteo_items_impreso": null,
+  "items": [],
+  "confianza_global": 0.95,
+  "advertencias": ["El comprobante no indica la hora de la operación."]
+}

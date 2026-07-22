@@ -1,0 +1,40 @@
+{
+  "tipo_documento": "factura_con_items",
+  "subtipo": "factura_seniat",
+  "moneda": "Bs",
+  "comercio": {
+    "nombre": "Redvital Comercializadora C.A",
+    "rif": "J-500328800",
+    "direccion": "Av Principal Los Manires, San Diego, Valencia Carabobo"
+  },
+  "fecha": "2026-05-30",
+  "hora": "22:13",
+  "numero_documento": "000045694",
+  "metodo_pago_sugerido": "Tarjeta",
+  "banco_emisor": null,
+  "banco_receptor": null,
+  "beneficiario": null,
+  "total": 188895.69,
+  "subtotal": 165922.57,
+  "iva_monto": 22973.12,
+  "alicuota_iva": 16,
+  "descuento": null,
+  "conteo_items_impreso": 67,
+  "items": [
+    { "descripcion": "Papa (oferta)", "cantidad": 0.5, "unidad": "Kg", "unidades": 1, "precio_unitario": 277.22, "total_linea": 138.61, "iva": "E", "categoria_sugerida": "Comida", "confianza": 0.9 },
+    { "descripcion": "Pimentón verde", "cantidad": 0.28, "unidad": "Kg", "unidades": 1, "precio_unitario": 1108.86, "total_linea": 310.48, "iva": "E", "categoria_sugerida": "Comida", "confianza": 0.9 },
+    { "descripcion": "Champú Argán Aguacate 300cm3", "cantidad": 1, "unidad": "Unidad", "unidades": 1, "precio_unitario": 2327.63, "total_linea": 2327.63, "iva": "G", "categoria_sugerida": "Limpieza", "confianza": 0.88 },
+    { "descripcion": "Escoba de barrer 30x12.5x130cm Aro", "cantidad": 1, "unidad": "Unidad", "unidades": 1, "precio_unitario": 2241.60, "total_linea": 2241.60, "iva": "G", "categoria_sugerida": "Limpieza", "confianza": 0.9 },
+    { "descripcion": "Lavaplatos líquido Máximo Poder 750ml", "cantidad": 1, "unidad": "Unidad", "unidades": 1, "precio_unitario": 2174.69, "total_linea": 2174.69, "iva": "G", "categoria_sugerida": "Limpieza", "confianza": 0.9 },
+    { "descripcion": "Cortina Roseivl JQD 140x228cm", "cantidad": 1, "unidad": "Unidad", "unidades": 1, "precio_unitario": 6017.43, "total_linea": 6017.43, "iva": "G", "categoria_sugerida": "Mobiliario", "confianza": 0.8 },
+    { "descripcion": "Cortina Roseivl JQD 140x228cm", "cantidad": 1, "unidad": "Unidad", "unidades": 1, "precio_unitario": 6017.43, "total_linea": 6017.43, "iva": "G", "categoria_sugerida": "Mobiliario", "confianza": 0.8 },
+    { "descripcion": "Cortina Roseivl JQD 140x228cm", "cantidad": 1, "unidad": "Unidad", "unidades": 1, "precio_unitario": 6017.43, "total_linea": 6017.43, "iva": "G", "categoria_sugerida": "Mobiliario", "confianza": 0.8 },
+    { "descripcion": "Cortina Roseivl JQD 140x228cm", "cantidad": 1, "unidad": "Unidad", "unidades": 1, "precio_unitario": 6017.43, "total_linea": 6017.43, "iva": "G", "categoria_sugerida": "Mobiliario", "confianza": 0.8 },
+    { "descripcion": "Almohada King Redvital", "cantidad": 1, "unidad": "Unidad", "unidades": 1, "precio_unitario": 3489.06, "total_linea": 3489.06, "iva": "G", "categoria_sugerida": "Mobiliario", "confianza": 0.85 }
+  ],
+  "confianza_global": 0.85,
+  "advertencias": [
+    "Factura larga fotografiada en dos columnas; se leyeron ambas.",
+    "Solo se transcribió una muestra de los 67 artículos; verifica las filas faltantes."
+  ]
+}

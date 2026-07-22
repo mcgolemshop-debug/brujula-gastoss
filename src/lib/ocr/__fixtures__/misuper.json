@@ -1,0 +1,37 @@
+{
+  "tipo_documento": "factura_con_items",
+  "subtipo": "factura_seniat",
+  "moneda": "Bs",
+  "comercio": {
+    "nombre": "Mi Super C.A",
+    "rif": "J-500257364",
+    "direccion": "Calle 55 con Carrera 15, Sector Oeste, Barquisimeto Lara"
+  },
+  "fecha": "2026-07-08",
+  "hora": "18:04",
+  "numero_documento": "00160653",
+  "metodo_pago_sugerido": "Tarjeta",
+  "banco_emisor": null,
+  "banco_receptor": null,
+  "beneficiario": null,
+  "total": 47297.86,
+  "subtotal": 44958.86,
+  "iva_monto": 2339.00,
+  "alicuota_iva": 16,
+  "descuento": null,
+  "conteo_items_impreso": 14,
+  "items": [
+    { "descripcion": "Azucaradas Maizoritos 240gr", "cantidad": 1, "unidad": "Unidad", "unidades": 1, "precio_unitario": 1817.74, "total_linea": 1817.74, "iva": "G", "categoria_sugerida": "Comida", "confianza": 0.9 },
+    { "descripcion": "Bisteck selecto", "cantidad": 3, "unidad": "Unidad", "unidades": 3, "precio_unitario": 82.31, "total_linea": 246.93, "iva": "E", "categoria_sugerida": "Comida", "confianza": 0.85 },
+    { "descripcion": "Carne molida selecta", "cantidad": 0.84, "unidad": "Kg", "unidades": 1, "precio_unitario": 6290.07, "total_linea": 5283.66, "iva": "E", "categoria_sugerida": "Comida", "confianza": 0.9 },
+    { "descripcion": "Chuleta ahumada", "cantidad": 0.45, "unidad": "Kg", "unidades": 1, "precio_unitario": 3457.14, "total_linea": 1555.71, "iva": "E", "categoria_sugerida": "Comida", "confianza": 0.9 },
+    { "descripcion": "Fresas", "cantidad": 0.32, "unidad": "Kg", "unidades": 1, "precio_unitario": 7956.90, "total_linea": 2546.21, "iva": "E", "categoria_sugerida": "Comida", "confianza": 0.88 },
+    { "descripcion": "Jamón de pierna Arichuna", "cantidad": 0.535, "unidad": "Kg", "unidades": 1, "precio_unitario": 5480.66, "total_linea": 2932.15, "iva": "G", "categoria_sugerida": "Comida", "confianza": 0.9 },
+    { "descripcion": "Néctar de pera Yukery 1.5L", "cantidad": 1, "unidad": "Unidad", "unidades": 1, "precio_unitario": 3078.51, "total_linea": 3078.51, "iva": "G", "categoria_sugerida": "Comida", "confianza": 0.9 },
+    { "descripcion": "Pulpa de cerdo", "cantidad": 0.3, "unidad": "Kg", "unidades": 1, "precio_unitario": 11235.70, "total_linea": 3370.71, "iva": "E", "categoria_sugerida": "Comida", "confianza": 0.85 },
+    { "descripcion": "Queso amarillo búfala Campo Rico", "cantidad": 2, "unidad": "Unidad", "unidades": 2, "precio_unitario": 1186.68, "total_linea": 2373.36, "iva": "E", "categoria_sugerida": "Comida", "confianza": 0.88 },
+    { "descripcion": "Salsa de tomate con albahaca 300gr", "cantidad": 1, "unidad": "Unidad", "unidades": 1, "precio_unitario": 4856.46, "total_linea": 4856.46, "iva": "G", "categoria_sugerida": "Comida", "confianza": 0.9 }
+  ],
+  "confianza_global": 0.9,
+  "advertencias": []
+}

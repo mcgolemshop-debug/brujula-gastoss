@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,13 +11,18 @@ import {
   Check,
   Loader2,
   Plus,
+  ScanLine,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { gastoSchema, type GastoFormInput } from "@/lib/validations/gasto";
-import { crearGastoAction, subirFacturaAction } from "../../_actions";
+import {
+  crearGastoAction,
+  subirFacturaAction,
+  adjuntarComprobanteEscaneadoAction,
+} from "../../_actions";
 import type { Categoria, User } from "@/types/domain";
 import { StepCategoria } from "./step-categoria";
 import { StepDetalles } from "./step-detalles";
@@ -35,6 +40,7 @@ const STEPS = [
 type StepKey = (typeof STEPS)[number]["key"];
 
 const DRAFT_KEY = "brujula:gasto:draft";
+const PREFILL_KEY = "catalejo:prefill";
 
 interface Props {
   categorias: Categoria[];
@@ -44,10 +50,15 @@ interface Props {
 
 export function MultiStepForm({ categorias, currentUser, tasaActual }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [stepIndex, setStepIndex] = React.useState(0);
   const [direction, setDirection] = React.useState<1 | -1>(1);
   const [photo, setPhoto] = React.useState<File | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
+  const [catalejo, setCatalejo] = React.useState<{
+    tmpPath: string | null;
+    advertencias: string[];
+  } | null>(null);
 
   const form = useForm<GastoFormInput>({
     resolver: zodResolver(gastoSchema),
@@ -80,13 +91,49 @@ export function MultiStepForm({ categorias, currentUser, tasaActual }: Props) {
     return () => sub.unsubscribe();
   }, [form]);
 
-  // Restaurar draft al montar (solo si hay datos)
+  // Al montar: el PREFILL de Catalejo tiene prioridad sobre el draft.
   React.useEffect(() => {
+    // 1. Prefill de Catalejo (comprobante escaneado sin ítems)
+    if (searchParams.get("catalejo")) {
+      try {
+        const raw = sessionStorage.getItem(PREFILL_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const p = parsed?.prefill;
+          const vigente = Date.now() - (parsed?.creadoEn ?? 0) < 10 * 60 * 1000;
+          if (p?.destino === "gasto" && vigente) {
+            const v = p.values;
+            form.reset({
+              ...form.getValues(),
+              fecha: v.fecha || form.getValues("fecha"),
+              hora: v.hora || form.getValues("hora"),
+              usuario_id: currentUser.id,
+              cantidad: v.cantidad ?? 1,
+              unidad: v.unidad ?? "Unidad",
+              items: v.items ?? 1,
+              precio_unitario_usd: v.precio_unitario_usd ?? 0,
+              metodo_pago: v.metodo_pago || "Efectivo $",
+              lugar_compra: v.lugar_compra ?? "",
+              numero_factura: v.numero_factura ?? "",
+              observaciones: v.observaciones ?? "",
+              // descripcion y categoria NUNCA se inventan: las pone el humano
+            });
+            setCatalejo({
+              tmpPath: parsed.tmpPath ?? null,
+              advertencias: p.advertencias ?? [],
+            });
+            sessionStorage.removeItem(PREFILL_KEY);
+            return;
+          }
+        }
+      } catch {}
+    }
+
+    // 2. Restaurar draft normal
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        // Solo restaurar si el draft es del usuario actual
         if (parsed.usuario_id === currentUser.id) {
           form.reset({ ...parsed });
         }
@@ -146,6 +193,12 @@ export function MultiStepForm({ categorias, currentUser, tasaActual }: Props) {
             description: upload.error,
           });
         }
+      } else if (catalejo?.tmpPath) {
+        // Adjuntar el comprobante escaneado (ya está en Storage tmp)
+        await adjuntarComprobanteEscaneadoAction({
+          gastoIds: [result.data.id],
+          tmpPath: catalejo.tmpPath,
+        }).catch(() => {});
       }
 
       // limpiar draft
@@ -180,6 +233,23 @@ export function MultiStepForm({ categorias, currentUser, tasaActual }: Props) {
   return (
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        {/* Banner de Catalejo: datos del pago cargados desde el escaneo */}
+        {catalejo && (
+          <div className="rounded-lg border border-accent/30 bg-accent/5 p-3 space-y-1.5">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <ScanLine className="h-4 w-4 text-accent shrink-0" />
+              Datos del pago cargados ✓ — completa qué se compró y la categoría.
+            </div>
+            {catalejo.advertencias.length > 0 && (
+              <ul className="text-[11px] text-amber-700 dark:text-amber-400 list-disc list-inside">
+                {catalejo.advertencias.slice(0, 3).map((a, i) => (
+                  <li key={i}>{a}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
         {/* Stepper */}
         <div className="space-y-3">
           <div className="flex items-center justify-between text-xs">

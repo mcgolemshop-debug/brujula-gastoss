@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import { repo } from "@/lib/repositories";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
+import { EscanearComprobanteButton } from "@/components/shared/escanear-comprobante-button";
 import { GastosTable } from "./_components/gastos-table";
 import { GastosFilters } from "./_components/gastos-filters";
 import type { GastoFilters, MetodoPago } from "@/types/domain";
@@ -65,12 +66,21 @@ export default async function GastosPage({ searchParams }: PageProps) {
             : "fecha"
         }`}
         actions={
-          <Button asChild variant="accent" size="lg" className="gap-2">
-            <Link href="/gastos/nuevo">
-              <Plus className="h-4 w-4" />
-              Nuevo gasto
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            {currentUser && (
+              <EscanearComprobanteButton
+                categorias={categorias}
+                tasa={tasaActual.valor_bs_por_usd}
+                usuarioId={currentUser.id}
+              />
+            )}
+            <Button asChild variant="accent" size="lg" className="gap-2">
+              <Link href="/gastos/nuevo">
+                <Plus className="h-4 w-4" />
+                Nuevo gasto
+              </Link>
+            </Button>
+          </div>
         }
       />
 

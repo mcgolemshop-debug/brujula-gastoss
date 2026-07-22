@@ -10,6 +10,7 @@ import {
 import { repo } from "@/lib/repositories";
 import { sendPushToAdmins } from "@/lib/push/send";
 import { formatUSD } from "@/lib/utils";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { NuevoGastoInput } from "@/types/domain";
 
 /** Umbral en USD para notificar al admin de un gasto registrado */
@@ -131,6 +132,68 @@ export async function eliminarGastoAction(
       error: e instanceof Error ? e.message : "Error al eliminar",
     };
   }
+}
+
+/**
+ * Catalejo · Adjunta un comprobante ya subido a Storage (scan-tmp) a uno o más
+ * gastos recién creados: copia la imagen a la carpeta de cada gasto, registra la
+ * factura y borra el temporal. No es fatal si falla (el gasto ya existe).
+ */
+export async function adjuntarComprobanteEscaneadoAction(input: {
+  gastoIds: string[];
+  tmpPath: string;
+}): Promise<ActionResult<{ adjuntados: number }>> {
+  const user = await repo.users.current();
+  if (!user) return { ok: false, error: "No autenticado" };
+
+  const { gastoIds, tmpPath } = input;
+  if (!Array.isArray(gastoIds) || gastoIds.length === 0) {
+    return { ok: false, error: "Sin gastos a los que adjuntar" };
+  }
+  if (typeof tmpPath !== "string" || !tmpPath.startsWith(`${user.id}/scan-tmp/`)) {
+    return { ok: false, error: "Ruta de comprobante inválida" };
+  }
+
+  const sb = await createSupabaseServerClient();
+
+  // Verificar propiedad de los gastos (RLS también protege, damos error claro)
+  const { data: gastosData } = await sb
+    .from("gastos")
+    .select("id, usuario_id")
+    .in("id", gastoIds);
+  const gastos = (gastosData ?? []) as { id: string; usuario_id: string }[];
+  const propios = gastos.filter(
+    (g) => user.rol === "admin" || g.usuario_id === user.id
+  );
+  if (propios.length === 0) {
+    return { ok: false, error: "Gastos no encontrados" };
+  }
+
+  const ext = tmpPath.split(".").pop() ?? "jpg";
+  const mime = ext === "pdf" ? "application/pdf" : "image/jpeg";
+  let adjuntados = 0;
+
+  for (const g of propios) {
+    const destPath = `${user.id}/${g.id}/comprobante-${Date.now()}.${ext}`;
+    const { error: copyErr } = await sb.storage
+      .from("facturas")
+      .copy(tmpPath, destPath);
+    if (copyErr) continue;
+    await sb.from("facturas").insert({
+      gasto_id: g.id,
+      url_storage: destPath,
+      nombre_archivo: `comprobante.${ext}`,
+      mime_type: mime,
+      subida_por: user.id,
+    });
+    adjuntados += 1;
+  }
+
+  // Borrar el temporal (best-effort)
+  await sb.storage.from("facturas").remove([tmpPath]).catch(() => {});
+
+  revalidatePath("/gastos");
+  return { ok: true, data: { adjuntados } };
 }
 
 export async function eliminarGastosBulkAction(

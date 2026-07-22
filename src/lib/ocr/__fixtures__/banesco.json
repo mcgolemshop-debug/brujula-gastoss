@@ -1,0 +1,22 @@
+{
+  "tipo_documento": "comprobante_sin_items",
+  "subtipo": "pago_movil",
+  "moneda": "Bs",
+  "comercio": { "nombre": null, "rif": null, "direccion": null },
+  "fecha": "2026-07-02",
+  "hora": "16:43",
+  "numero_documento": "061831291166",
+  "metodo_pago_sugerido": "Pago Móvil",
+  "banco_emisor": "Banesco Banco Universal S.A.C.A.",
+  "banco_receptor": "Banco Provincial",
+  "beneficiario": "V33063877 · 04145448969",
+  "total": 51500.00,
+  "subtotal": null,
+  "iva_monto": null,
+  "alicuota_iva": null,
+  "descuento": null,
+  "conteo_items_impreso": null,
+  "items": [],
+  "confianza_global": 0.95,
+  "advertencias": []
+}

@@ -1,0 +1,35 @@
+{
+  "tipo_documento": "factura_con_items",
+  "subtipo": "factura_seniat",
+  "moneda": "Bs",
+  "comercio": {
+    "nombre": "Farmatodo C.A · Farmacia El Parque",
+    "rif": "J-000202001",
+    "direccion": "Farmacia El Parque, Urb. Bararida, Mun. Iribarren"
+  },
+  "fecha": "2026-06-25",
+  "hora": "21:09",
+  "numero_documento": "00176406",
+  "metodo_pago_sugerido": "Tarjeta",
+  "banco_emisor": null,
+  "banco_receptor": null,
+  "beneficiario": null,
+  "total": 34955.62,
+  "subtotal": 31905.47,
+  "iva_monto": 3050.15,
+  "alicuota_iva": 16,
+  "descuento": 1768.80,
+  "conteo_items_impreso": 8,
+  "items": [
+    { "descripcion": "Compota Heinz Manzana 12x", "cantidad": 1, "unidad": "Unidad", "unidades": 1, "precio_unitario": 1181.03, "total_linea": 1181.03, "iva": "G", "categoria_sugerida": "Comida", "confianza": 0.95 },
+    { "descripcion": "Compota Heinz Pera 2x", "cantidad": 1, "unidad": "Unidad", "unidades": 1, "precio_unitario": 1741.38, "total_linea": 1741.38, "iva": "G", "categoria_sugerida": "Comida", "confianza": 0.95 },
+    { "descripcion": "Algodón Hidven Motas 50", "cantidad": 1, "unidad": "Unidad", "unidades": 1, "precio_unitario": 2925.31, "total_linea": 2925.31, "iva": "G", "categoria_sugerida": "Medicinas", "confianza": 0.9 },
+    { "descripcion": "Toallitas húmedas Kimlot Aloe 4x", "cantidad": 1, "unidad": "Unidad", "unidades": 1, "precio_unitario": 30.22, "total_linea": 30.22, "iva": "G", "categoria_sugerida": "Limpieza", "confianza": 0.85 },
+    { "descripcion": "Bolsa de cliente", "cantidad": 1, "unidad": "Unidad", "unidades": 1, "precio_unitario": 4148.97, "total_linea": 4148.97, "iva": "G", "categoria_sugerida": "Otros", "confianza": 0.8 },
+    { "descripcion": "Pañal Farmatodo Premium Etapa", "cantidad": 1, "unidad": "Unidad", "unidades": 1, "precio_unitario": 12842.00, "total_linea": 12842.00, "iva": "E", "categoria_sugerida": "Medicinas", "confianza": 0.9 },
+    { "descripcion": "Fornidable Crecer 2x", "cantidad": 1, "unidad": "Unidad", "unidades": 1, "precio_unitario": 1950.34, "total_linea": 1950.34, "iva": "G", "categoria_sugerida": "Comida", "confianza": 0.88 },
+    { "descripcion": "Compota Vivo Organic 4x", "cantidad": 1, "unidad": "Unidad", "unidades": 1, "precio_unitario": 7086.22, "total_linea": 7086.22, "iva": "G", "categoria_sugerida": "Comida", "confianza": 0.9 }
+  ],
+  "confianza_global": 0.92,
+  "advertencias": []
+}
